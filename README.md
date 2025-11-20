@@ -5,10 +5,9 @@ A small project demonstrating Temporal Fusion Transformer (TFT) predictions for 
 ## Repository structure
 - `tft_prediction.py` — Main prediction pipeline. Performs data loading, preprocessing and feature engineering, converts data to Darts `TimeSeries`, scales data, loads pretrained TFT models (multiple horizons), runs inference and prints evaluation metrics.
 - `run_python_script.ipynb` — Colab-oriented notebook that installs dependencies, mounts Google Drive, copies `tft_prediction.py` into the Colab environment and runs it. Useful for running the pipeline on Colab with mounted Drive.
-- `Seoul_bike_prediction.ipynb` — Notebook with prediction examples, EDA and model comparisons (visualizations and evaluation metrics).
-- `notebooks/` — Folder containing analysis notebooks:
-  - `notebooks/Prophet_Prediction.ipynb` — Prophet experiment notebook (hourly, daily, 3-day forecasts using Darts' Prophet wrapper).
-  - `notebooks/SeoulBikeMidReport.ipynb` — Mid-report notebook with EDA, summary statistics and key visualizations.
+- `Seoul_bike_prediction.ipynb` — Notebook with model training and model comparisons (visualizations and evaluation metrics).
+- `Prophet_Prediction.ipynb` — Prophet experiment notebook (hourly, daily, 3-day forecasts using Darts' Prophet wrapper).
+- `SeoulBikeMidReport.ipynb` — Mid-report notebook with EDA, summary statistics and key visualizations.
 - `data/` — Data folder. Contains `data/SeoulBikeData.csv` (raw CSV dataset used across notebooks and the prediction script).
 - `models/` — Saved model artifacts (used for inference):
   - `tft_1h.pt`, `tft_1h.pt.ckpt`  — 1-hour horizon TFT model

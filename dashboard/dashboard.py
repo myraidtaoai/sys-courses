@@ -583,9 +583,14 @@ if available_dates_result:
     col1, col2 = st.columns(2)
     
     with col1:
+        # Default to 2018-11-22
+        default_date = datetime(2018, 11, 22).date()
+        if available_dates and (default_date < available_dates[-1] or default_date > available_dates[0]):
+            default_date = available_dates[0]
+
         selected_date = st.date_input(
             "📅 Select Prediction Date",
-            value=available_dates[0] if available_dates else datetime.now().date(),
+            value=default_date,
             min_value=available_dates[-1] if available_dates else None,
             max_value=available_dates[0] if available_dates else None
         )

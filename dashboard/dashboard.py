@@ -698,17 +698,6 @@ if available_dates_result:
         # Add vertical line for selected datetime
         selected_datetime_str = selected_datetime.strftime('%Y-%m-%d %H:%M:%S')
         selected_unix = int(selected_datetime.timestamp()) * 1000
-
-        fig.add_vline(
-            x=selected_unix,
-            line_dash="dot",
-            line_color="orange",
-            line_width=2,
-            annotation_text=f"Selected: {selected_datetime_str}",
-            annotation_position="top left",
-            annotation_font_size=11,
-            annotation_font_color="orange"
-        )
         
         # Update layout
         fig.update_layout(

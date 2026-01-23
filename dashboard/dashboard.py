@@ -7,7 +7,7 @@ import plotly.graph_objects as go
 
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent))
-from dashboard.db_connection import DatabaseConnection
+from db_connection import DatabaseConnection
 
 # Set page configuration
 st.set_page_config(
@@ -41,6 +41,9 @@ st.markdown("""
 def get_db():
     """Get cached database connection"""
     db_path = Path(__file__).parent / "database" / "bikes.db"
+    if not db_path.exists():
+        # Fallback to parent directory if not found in current directory
+        db_path = Path(__file__).parent.parent / "database" / "bikes.db"
     return DatabaseConnection(str(db_path))
 
 

@@ -1,15 +1,13 @@
 import sys
-import os
 import pandas as pd
 from pathlib import Path
-import numpy as np
 import streamlit as st
 from datetime import datetime, timedelta
 import plotly.graph_objects as go
 
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent))
-from database.db_connection import DatabaseConnection
+from dashboard.db_connection import DatabaseConnection
 
 # Set page configuration
 st.set_page_config(

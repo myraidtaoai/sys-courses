@@ -1,25 +1,21 @@
-FROM node:18-alpine
+# Stage 1: Build the React application
+FROM node:18-alpine as build
 
 WORKDIR /app
 
-# Copy package files
 COPY package*.json ./
 RUN npm install
 
-# Copy source code
 COPY . .
 
-# Set environment variable for production build
-ENV NODE_ENV=production
-
-# Build the app
+# Build the application
 RUN npm run build
 
-# Install simple static file server
-RUN npm install -g serve
+# Stage 2: Serve the application with Nginx
+FROM nginx:alpine
 
-# Expose port 8080 (Cloud Run requirement)
-EXPOSE 8080
+COPY --from=build /app/dist /usr/share/nginx/html
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Serve the built app with React Router support
-CMD ["serve", "-s", "dist", "-l", "8080"]
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]

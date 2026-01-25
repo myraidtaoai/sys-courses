@@ -1,22 +1,28 @@
-FROM python:3.11-slim
+# Use an official Python runtime as a parent image
+FROM python:3.12-slim
 
-# Set working directory
+# Set the working directory in the container
 WORKDIR /app
 
 # Install system dependencies
-RUN apt-get update && apt-get install -y \
-    gcc \
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements and install Python dependencies
-COPY requirements.txt .
+# Copy requirements file
+COPY backend/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application code
-COPY . .
+# Copy the backend code and the database folder
+# We copy them to preserve the relative paths expected by database_agent.py
+COPY backend/ backend/
+COPY database/ database/
 
-# Expose port 8080 (Cloud Run requirement)
+# Change to the backend directory to run the app
+WORKDIR /app/backend
+
+# Make port 8080 available to the world outside this container
 EXPOSE 8080
 
-# Start the application with proper configuration
-CMD exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8080} --workers 1
+# Run the application
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080"]

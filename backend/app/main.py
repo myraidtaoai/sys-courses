@@ -3,8 +3,8 @@ import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
-from config import settings
-from routers import chat
+from app.config import settings
+from app.routers import chat
 
 
 # Configure logging

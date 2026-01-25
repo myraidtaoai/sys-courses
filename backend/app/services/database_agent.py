@@ -12,8 +12,7 @@ from langchain_core.messages import AIMessage
 from langgraph.graph import END, START, MessagesState, StateGraph
 from langgraph.prebuilt import ToolNode
 
-sys.path.append('..')
-from config import settings
+from app.config import settings
 
 class DatabaseAgent:
     def __init__(self, patient_id, gemini_key=settings.GOOGLE_API_KEY, question=None):

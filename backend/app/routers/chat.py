@@ -10,10 +10,10 @@ import re
 import json
 from google import genai
 sys.path.append('..')
-from config import settings
-from models.chat import ChatRequest, ChatResponse
-from services.database_agent import DatabaseAgent
-from services.llm_utilities import generate_tts_with_gemini, save_audio_file, transcribe_audio
+from app.config import settings
+from app.models.chat import ChatRequest, ChatResponse
+from app.services.database_agent import DatabaseAgent
+from app.services.llm_utilities import generate_tts_with_gemini, save_audio_file, transcribe_audio
 
 
 router = APIRouter(prefix="/chat", tags=["chat"])

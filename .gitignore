@@ -1,0 +1,5 @@
+.DS_Store
+.env
+.healthinfo
+__pycache__/local_database_ops.cpython-312.pyc
+.vscode/settings.json

@@ -1,127 +1,7 @@
-import { AlertTriangle, CheckCircle2, Mail, MessageSquareWarning, Shield } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, Mail, MessageSquareWarning, Shield, X } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useMemo, useState } from 'react'
-
-type Difficulty = 'Beginner' | 'Intermediate' | 'Advanced' | 'Expert'
-
-type Scenario = {
-  id: number
-  title: string
-  channel: 'Email' | 'SMS'
-  message: string
-  explanation: string
-  safe: boolean
-}
-
-type Level = {
-  key: Difficulty
-  subtitle: string
-  hint: string
-  scenarios: Scenario[]
-}
-
-const levels: Level[] = [
-  {
-    key: 'Beginner',
-    subtitle: 'Clear red flags and obvious bait',
-    hint: 'Check urgency language, suspicious links, and unusual payment requests.',
-    scenarios: [
-      {
-        id: 1,
-        title: 'Payroll Account Alert',
-        channel: 'Email',
-        message:
-          'Your salary deposit failed. Verify your account now at payrol-secure-update.com in 30 minutes to avoid suspension.',
-        explanation: 'Misspelled domain and artificial urgency are common phishing tactics.',
-        safe: false,
-      },
-      {
-        id: 2,
-        title: 'Calendar Invite',
-        channel: 'Email',
-        message:
-          'Quarterly planning meeting moved to 2:00 PM. Please confirm attendance in the company calendar.',
-        explanation: 'No pressure, no suspicious link, and normal internal context.',
-        safe: true,
-      },
-    ],
-  },
-  {
-    key: 'Intermediate',
-    subtitle: 'Mixed signals and social engineering',
-    hint: 'Verify sender identity and cross-check links before you click.',
-    scenarios: [
-      {
-        id: 1,
-        title: 'Vendor Invoice Follow-up',
-        channel: 'Email',
-        message:
-          'Hi, this is accounting. We updated banking details for this month. Use the attached sheet before processing pending invoices.',
-        explanation: 'Unexpected bank detail change requests should always be validated out of band.',
-        safe: false,
-      },
-      {
-        id: 2,
-        title: 'HR Benefits Reminder',
-        channel: 'Email',
-        message:
-          'Open enrollment closes Friday. Review options in the official HR portal from the employee intranet homepage.',
-        explanation: 'Refers to official access path and avoids suspicious redirection.',
-        safe: true,
-      },
-    ],
-  },
-  {
-    key: 'Advanced',
-    subtitle: 'Personalized and contextual lures',
-    hint: 'Watch for impersonation and unusual requests that use familiar context.',
-    scenarios: [
-      {
-        id: 1,
-        title: 'Friend Account Recovery Link',
-        channel: 'SMS',
-        message:
-          'Hey, I am locked out of my account. Can you log in with your details on this page to verify my identity for support?',
-        explanation: 'Even trusted contacts can be compromised. Never enter credentials on shared links.',
-        safe: false,
-      },
-      {
-        id: 2,
-        title: 'Campus IT Maintenance Notice',
-        channel: 'Email',
-        message:
-          'Scheduled maintenance tonight at 11 PM. Services may be unavailable briefly. Use your normal portal after downtime ends.',
-        explanation: 'No sensitive data requested and it directs users to the standard portal workflow.',
-        safe: true,
-      },
-    ],
-  },
-  {
-    key: 'Expert',
-    subtitle: 'Advanced impersonation attempts',
-    hint: 'Assume compromise unless sender, tone, and destination are all verifiable.',
-    scenarios: [
-      {
-        id: 1,
-        title: 'Executive Wire Request',
-        channel: 'SMS',
-        message:
-          'Need immediate confidential transfer before board call. Keep this private and send confirmation once done.',
-        explanation: 'Authority pressure + secrecy + money transfer is high-risk business email compromise behavior.',
-        safe: false,
-      },
-      {
-        id: 2,
-        title: 'Security Training Prompt',
-        channel: 'SMS',
-        message:
-          'Reminder: complete this month training through your usual SSO dashboard. IT will never ask for your password by message.',
-        explanation: 'Matches good security guidance and points users to trusted access workflow.',
-        safe: true,
-      },
-    ],
-  },
-]
+import { levels, type Level } from './data/scenarios'
 
 function App() {
   const [selectedLevel, setSelectedLevel] = useState<Level | null>(null)
@@ -129,8 +9,10 @@ function App() {
   const [score, setScore] = useState(0)
   const [feedback, setFeedback] = useState<string | null>(null)
   const [isComplete, setIsComplete] = useState(false)
+  const [isScenarioModalOpen, setIsScenarioModalOpen] = useState(false)
 
   const currentScenario = selectedLevel?.scenarios[index]
+  const isRiskyScenario = currentScenario ? !currentScenario.safe : false
 
   const accuracy = useMemo(() => {
     if (!selectedLevel) {
@@ -149,6 +31,7 @@ function App() {
     setScore(0)
     setFeedback(null)
     setIsComplete(false)
+    setIsScenarioModalOpen(false)
   }
 
   const handleAnswer = (userThinksSafe: boolean) => {
@@ -168,8 +51,10 @@ function App() {
       const isLastScenario = index >= selectedLevel.scenarios.length - 1
       if (isLastScenario) {
         setIsComplete(true)
+        setIsScenarioModalOpen(false)
         return
       }
+      setIsScenarioModalOpen(false)
       setIndex((value) => value + 1)
       setFeedback(null)
     }, 900)
@@ -181,6 +66,7 @@ function App() {
     setScore(0)
     setFeedback(null)
     setIsComplete(false)
+    setIsScenarioModalOpen(false)
   }
 
   return (
@@ -255,36 +141,138 @@ function App() {
                 />
               </div>
 
-              <article className="rounded-2xl border border-slate-700 bg-slate-900/80 p-6 shadow-[0_20px_50px_-30px_rgba(15,23,42,0.9)]">
-                <div className="mb-5 flex items-center gap-2 text-xs uppercase tracking-[0.25em] text-slate-400">
-                  {currentScenario.channel === 'Email' ? <Mail className="h-4 w-4" /> : <MessageSquareWarning className="h-4 w-4" />}
-                  {currentScenario.channel}
-                </div>
-                <h2 className="text-2xl font-semibold text-white">{currentScenario.title}</h2>
-                <p className="mt-4 text-base leading-7 text-slate-200">{currentScenario.message}</p>
-                <p className="mt-6 rounded-xl border border-cyan-400/20 bg-cyan-400/5 p-4 text-sm leading-6 text-cyan-100/90">
-                  {currentScenario.explanation}
-                </p>
-              </article>
+              <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
+                <div className="space-y-4">
+                  <button
+                    onClick={() => setIsScenarioModalOpen(true)}
+                    className="w-full rounded-2xl border border-slate-700 bg-slate-900/80 p-6 text-left shadow-[0_20px_50px_-30px_rgba(15,23,42,0.9)] transition hover:border-cyan-300/60"
+                  >
+                    <div className="mb-4 flex items-center gap-2 text-xs uppercase tracking-[0.25em] text-slate-400">
+                      {currentScenario.channel === 'Email' ? <Mail className="h-4 w-4" /> : <MessageSquareWarning className="h-4 w-4" />}
+                      {currentScenario.channel}
+                    </div>
 
-              <div className="grid gap-3 sm:grid-cols-2">
-                <motion.button
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => handleAnswer(true)}
-                  className="rounded-2xl border border-emerald-300/40 bg-emerald-400/10 px-4 py-4 font-semibold text-emerald-100 transition hover:bg-emerald-400/20"
-                >
-                  Mark as Safe
-                </motion.button>
-                <motion.button
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => handleAnswer(false)}
-                  className="rounded-2xl border border-rose-300/40 bg-rose-400/10 px-4 py-4 font-semibold text-rose-100 transition hover:bg-rose-400/20"
-                >
-                  Mark as Phishing
-                </motion.button>
+                    <div className="mx-auto w-full max-w-[290px] rounded-[3rem] border border-slate-500/70 bg-slate-950 p-2.5 shadow-[0_30px_60px_-28px_rgba(15,23,42,0.9)]">
+                      <div className="relative h-[590px] overflow-hidden rounded-[2.5rem] border border-slate-700 bg-gradient-to-b from-slate-800 to-slate-950 p-4">
+                        <div className="absolute left-1/2 top-2 flex h-7 w-36 -translate-x-1/2 items-center justify-center rounded-b-2xl bg-black/90">
+                          <div className="h-1.5 w-14 rounded-full bg-slate-700" />
+                          <div className="ml-2 h-1.5 w-1.5 rounded-full bg-slate-600" />
+                        </div>
+
+                        <div className="mt-8 mb-4 flex items-center justify-between text-[11px] text-slate-300">
+                          <span>{currentScenario.channel === 'Email' ? 'Inbox' : 'Messages'}</span>
+                          <span>9:41</span>
+                        </div>
+
+                        <div className="rounded-2xl border border-slate-600/80 bg-slate-800/70 p-3">
+                          <p className="text-[11px] uppercase tracking-[0.15em] text-slate-400">Notification</p>
+                          <h2 className="mt-2 text-sm font-semibold text-white">{currentScenario.title}</h2>
+                          <p className="mt-1 text-xs text-cyan-200">From: {currentScenario.sender}</p>
+                        </div>
+
+                        <div className="mt-3 rounded-2xl border border-cyan-400/20 bg-cyan-500/10 px-4 py-3">
+                          <p className="text-xs text-slate-300">Tap notification to view full message details</p>
+                        </div>
+
+                        <div className="absolute bottom-2.5 left-1/2 h-1.5 w-24 -translate-x-1/2 rounded-full bg-slate-600" />
+                      </div>
+                    </div>
+                  </button>
+
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <motion.button
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => handleAnswer(true)}
+                      className="rounded-2xl border border-emerald-300/40 bg-emerald-400/10 px-4 py-4 font-semibold text-emerald-100 transition hover:bg-emerald-400/20"
+                    >
+                      Mark as Safe
+                    </motion.button>
+                    <motion.button
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => handleAnswer(false)}
+                      className="rounded-2xl border border-rose-300/40 bg-rose-400/10 px-4 py-4 font-semibold text-rose-100 transition hover:bg-rose-400/20"
+                    >
+                      Mark as Phishing
+                    </motion.button>
+                  </div>
+                </div>
+
+                <aside className="rounded-2xl border border-slate-700 bg-slate-900/80 p-5 shadow-[0_20px_50px_-30px_rgba(15,23,42,0.9)]">
+                  <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Tips and Alerts</p>
+                  <div
+                    className={`mt-4 rounded-xl border px-3 py-2 text-sm font-semibold ${
+                      isRiskyScenario
+                        ? 'border-rose-300/40 bg-rose-400/10 text-rose-100'
+                        : 'border-emerald-300/40 bg-emerald-400/10 text-emerald-100'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <AlertTriangle className="h-4 w-4" />
+                      {isRiskyScenario ? 'High Alert Pattern Detected' : 'Low Immediate Risk Signals'}
+                    </div>
+                  </div>
+
+                  <div className="mt-4 rounded-xl border border-amber-300/35 bg-amber-400/10 p-4">
+                    <p className="text-xs uppercase tracking-[0.18em] text-amber-200">Notice</p>
+                    <p className="mt-2 text-sm leading-6 text-cyan-100/90">{currentScenario.explanation}</p>
+                  </div>
+
+                  <ul className="mt-4 space-y-2 text-sm text-slate-300">
+                    {currentScenario.clues.map((clue) => (
+                      <li key={clue} className="flex items-start gap-2">
+                        <AlertTriangle className="mt-0.5 h-4 w-4 text-amber-300" />
+                        {clue}
+                      </li>
+                    ))}
+                    <li className="flex items-start gap-2">
+                      <Shield className="mt-0.5 h-4 w-4 text-cyan-300" />
+                      Verify sender identity through a trusted channel.
+                    </li>
+                  </ul>
+                </aside>
               </div>
 
               <AnimatePresence>
+                {isScenarioModalOpen && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 px-4"
+                    onClick={() => setIsScenarioModalOpen(false)}
+                  >
+                    <motion.div
+                      initial={{ opacity: 0, y: 24, scale: 0.96 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 16, scale: 0.96 }}
+                      transition={{ duration: 0.2 }}
+                      className="w-full max-w-lg rounded-2xl border border-slate-700 bg-slate-900 p-5 shadow-2xl"
+                      onClick={(event) => event.stopPropagation()}
+                    >
+                      <div className="mb-4 flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-xs uppercase tracking-[0.25em] text-slate-400">
+                            {currentScenario.channel}
+                          </p>
+                          <h3 className="mt-2 text-xl font-semibold text-white">{currentScenario.title}</h3>
+                          <p className="mt-2 text-sm text-cyan-200">From: {currentScenario.sender}</p>
+                        </div>
+                        <button
+                          onClick={() => setIsScenarioModalOpen(false)}
+                          className="rounded-lg border border-slate-600 p-2 text-slate-300 transition hover:border-cyan-300 hover:text-cyan-200"
+                          aria-label="Close message details"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+
+                      <div className="rounded-2xl border border-cyan-400/20 bg-cyan-500/10 px-4 py-3 text-sm leading-6 text-cyan-50">
+                        {currentScenario.message}
+                      </div>
+                    </motion.div>
+                  </motion.div>
+                )}
+
                 {feedback && (
                   <motion.p
                     initial={{ opacity: 0, y: 8 }}

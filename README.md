@@ -146,3 +146,6 @@ Then open the local URL shown in terminal (usually `http://localhost:5173`).
 npm run lint
 npm run build
 ```
+
+## Demo
+To see a demo of the game, please visit [PhishGuard Demo](https://serious-game-wine.vercel.app/) 

@@ -147,5 +147,5 @@ npm run lint
 npm run build
 ```
 
-## Demo
+## Online Demo
 To see a demo of the game, please visit [PhishGuard Demo](https://serious-game-wine.vercel.app/) 

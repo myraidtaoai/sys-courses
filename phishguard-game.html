@@ -1,0 +1,1653 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PhishGuard — Don't Get Hooked</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;500;600;700&family=Orbitron:wght@700;900&display=swap');
+
+  :root {
+    --bg: #080c10;
+    --panel: #0d1117;
+    --panel2: #111820;
+    --border: #1e3040;
+    --accent: #00e5ff;
+    --accent2: #ff3c6e;
+    --accent3: #39ff7a;
+    --warn: #ffb300;
+    --text: #c8d8e8;
+    --text-dim: #4a6070;
+    --text-bright: #eaf4ff;
+    --glow: 0 0 12px rgba(0,229,255,0.4);
+    --glow-red: 0 0 14px rgba(255,60,110,0.5);
+    --glow-green: 0 0 12px rgba(57,255,122,0.4);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 16px;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Scanline overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.04) 2px, rgba(0,0,0,0.04) 4px);
+    pointer-events: none;
+    z-index: 999;
+  }
+
+  /* Noise texture */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 998;
+    opacity: 0.4;
+  }
+
+  /* ── SCREENS ── */
+  .screen { display: none; min-height: 100vh; }
+  .screen.active { display: flex; flex-direction: column; }
+
+  /* ── INTRO SCREEN ── */
+  #intro-screen {
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 40px 20px;
+    background: radial-gradient(ellipse at 50% 30%, rgba(0,229,255,0.06) 0%, transparent 60%);
+  }
+
+  .logo-wrap { margin-bottom: 32px; }
+  .logo-icon {
+    font-size: 64px;
+    display: block;
+    margin-bottom: 8px;
+    filter: drop-shadow(0 0 16px rgba(0,229,255,0.6));
+    animation: float 3s ease-in-out infinite;
+  }
+  @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
+
+  .logo-title {
+    font-family: 'Orbitron', monospace;
+    font-size: clamp(32px, 7vw, 56px);
+    font-weight: 900;
+    color: var(--accent);
+    text-shadow: var(--glow), 0 0 40px rgba(0,229,255,0.2);
+    letter-spacing: 4px;
+  }
+  .logo-sub {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 14px;
+    color: var(--text-dim);
+    letter-spacing: 3px;
+    margin-top: 4px;
+  }
+
+  .intro-desc {
+    max-width: 520px;
+    margin: 0 auto 40px;
+    font-size: 18px;
+    line-height: 1.6;
+    color: var(--text);
+  }
+  .intro-desc strong { color: var(--accent); }
+
+  .level-select { width: 100%; max-width: 500px; margin: 0 auto 32px; }
+  .level-select h3 {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 3px;
+    color: var(--text-dim);
+    margin-bottom: 16px;
+  }
+
+  .level-btn {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: left;
+    color: var(--text);
+    font-family: 'Rajdhani', sans-serif;
+    position: relative;
+    overflow: hidden;
+  }
+  .level-btn::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 3px;
+  }
+  .level-btn.easy::before { background: var(--accent3); }
+  .level-btn.medium::before { background: var(--warn); }
+  .level-btn.hard::before { background: var(--accent2); }
+  .level-btn:hover {
+    border-color: var(--accent);
+    background: var(--panel2);
+    transform: translateX(4px);
+    box-shadow: var(--glow);
+  }
+  .level-btn .lv-num {
+    font-family: 'Orbitron', monospace;
+    font-size: 22px;
+    font-weight: 700;
+    margin-right: 16px;
+    color: var(--text-dim);
+    min-width: 36px;
+  }
+  .level-btn .lv-info { flex: 1; }
+  .level-btn .lv-name {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-bright);
+  }
+  .level-btn .lv-desc {
+    font-size: 13px;
+    color: var(--text-dim);
+    margin-top: 2px;
+  }
+  .level-btn .lv-badge {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 1px;
+    padding: 3px 8px;
+    border-radius: 3px;
+    border: 1px solid;
+  }
+  .level-btn.easy .lv-badge { color: var(--accent3); border-color: var(--accent3); }
+  .level-btn.medium .lv-badge { color: var(--warn); border-color: var(--warn); }
+  .level-btn.hard .lv-badge { color: var(--accent2); border-color: var(--accent2); }
+
+  /* ── GAME SCREEN ── */
+  #game-screen { padding: 0; }
+
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 20px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .topbar-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .topbar-logo {
+    font-family: 'Orbitron', monospace;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: 2px;
+  }
+  .topbar-level {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: 1px;
+    background: var(--bg);
+    padding: 3px 8px;
+    border-radius: 3px;
+    border: 1px solid var(--border);
+  }
+  .topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .score-wrap {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 13px;
+  }
+  .score-label { color: var(--text-dim); }
+  .score-val {
+    color: var(--accent3);
+    font-size: 16px;
+    font-weight: bold;
+    text-shadow: var(--glow-green);
+  }
+  .health-wrap { display: flex; gap: 4px; }
+  .heart { font-size: 14px; transition: all 0.3s; }
+  .heart.lost { filter: grayscale(1); opacity: 0.3; }
+
+  .progress-bar-wrap {
+    height: 2px;
+    background: var(--border);
+    width: 100%;
+  }
+  .progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent3));
+    transition: width 0.5s ease;
+    box-shadow: 0 0 8px var(--accent);
+  }
+
+  /* Main layout */
+  .game-body {
+    display: flex;
+    flex: 1;
+    height: calc(100vh - 64px);
+    overflow: hidden;
+  }
+
+  /* Left: scenario info */
+  .scenario-panel {
+    width: 280px;
+    min-width: 280px;
+    background: var(--panel);
+    border-right: 1px solid var(--border);
+    padding: 20px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .scenario-title {
+    font-family: 'Orbitron', monospace;
+    font-size: 11px;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+  }
+  .scenario-name {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text-bright);
+    line-height: 1.3;
+    margin-top: 4px;
+  }
+  .scenario-context {
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--text-dim);
+    border-left: 2px solid var(--border);
+    padding-left: 12px;
+  }
+
+  .threat-meter {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 12px;
+  }
+  .threat-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+    margin-bottom: 8px;
+  }
+  .threat-bar-outer {
+    height: 6px;
+    background: var(--border);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .threat-bar-inner {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.5s, background 0.5s;
+  }
+  .threat-level-text {
+    font-size: 12px;
+    font-weight: 600;
+    margin-top: 6px;
+  }
+
+  .tip-box {
+    background: rgba(0,229,255,0.05);
+    border: 1px solid rgba(0,229,255,0.15);
+    border-radius: 6px;
+    padding: 12px;
+  }
+  .tip-box-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: var(--accent);
+    margin-bottom: 6px;
+  }
+  .tip-box-text {
+    font-size: 13px;
+    color: var(--text-dim);
+    line-height: 1.5;
+  }
+
+  /* Center: chat */
+  .chat-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    scroll-behavior: smooth;
+  }
+  .chat-messages::-webkit-scrollbar { width: 4px; }
+  .chat-messages::-webkit-scrollbar-track { background: transparent; }
+  .chat-messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  /* Message bubbles */
+  .msg { display: flex; gap: 10px; align-items: flex-start; opacity: 0; animation: fadeSlideIn 0.4s forwards; }
+  @keyframes fadeSlideIn { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+  .msg.incoming { flex-direction: row; }
+  .msg.outgoing { flex-direction: row-reverse; }
+  .msg.system { justify-content: center; }
+
+  .msg-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+    border: 1px solid var(--border);
+  }
+  .msg.incoming .msg-avatar { background: var(--panel2); }
+  .msg.outgoing .msg-avatar { background: rgba(0,229,255,0.1); border-color: var(--accent); }
+
+  .msg-bubble {
+    max-width: 65%;
+    padding: 12px 16px;
+    border-radius: 12px;
+    font-size: 15px;
+    line-height: 1.6;
+  }
+  .msg.incoming .msg-bubble {
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    border-top-left-radius: 3px;
+    color: var(--text);
+  }
+  .msg.outgoing .msg-bubble {
+    background: rgba(0,229,255,0.12);
+    border: 1px solid rgba(0,229,255,0.25);
+    border-top-right-radius: 3px;
+    color: var(--text-bright);
+  }
+  .msg.system .msg-bubble {
+    background: transparent;
+    border: none;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 1px;
+    color: var(--text-dim);
+    text-align: center;
+    padding: 4px 0;
+  }
+
+  /* Email mock */
+  .email-mock {
+    max-width: 90%;
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    animation: fadeSlideIn 0.4s forwards;
+    opacity: 0;
+  }
+  .email-mock.suspicious { border-color: rgba(255,179,0,0.4); }
+  .email-mock.dangerous { border-color: rgba(255,60,110,0.4); }
+
+  .email-header {
+    background: var(--panel);
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .email-row {
+    display: flex;
+    gap: 8px;
+    font-size: 13px;
+    margin-bottom: 4px;
+    font-family: 'Share Tech Mono', monospace;
+  }
+  .email-row:last-child { margin-bottom: 0; }
+  .email-field { color: var(--text-dim); min-width: 40px; }
+  .email-val { color: var(--text); }
+  .email-val.suspicious-addr { color: var(--warn); text-decoration: underline; text-decoration-style: wavy; }
+  .email-val.spoofed { color: var(--accent2); }
+  .email-subject { font-weight: 700; color: var(--text-bright); }
+  .email-body {
+    padding: 16px;
+    font-size: 14px;
+    line-height: 1.7;
+    color: var(--text);
+  }
+  .email-link {
+    display: inline-block;
+    background: rgba(0,100,200,0.2);
+    border: 1px solid rgba(0,100,200,0.4);
+    color: #6bb5ff;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px;
+    cursor: default;
+  }
+  .email-link.dangerous-link {
+    background: rgba(255,60,110,0.1);
+    border-color: rgba(255,60,110,0.3);
+    color: var(--accent2);
+  }
+  .email-urgent {
+    color: var(--accent2);
+    font-weight: 700;
+  }
+
+  /* SMS mock */
+  .sms-wrap {
+    display: flex;
+    gap: 10px;
+    align-items: flex-end;
+    animation: fadeSlideIn 0.4s forwards;
+    opacity: 0;
+  }
+  .sms-bubble {
+    background: #1a2530;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    border-bottom-left-radius: 3px;
+    padding: 10px 14px;
+    font-size: 14px;
+    line-height: 1.6;
+    max-width: 300px;
+    color: var(--text);
+  }
+  .sms-sender {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: var(--text-dim);
+    margin-bottom: 4px;
+  }
+
+  /* Options area */
+  .options-area {
+    padding: 16px 20px;
+    border-top: 1px solid var(--border);
+    background: var(--panel);
+  }
+  .options-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+    margin-bottom: 12px;
+  }
+  .options-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .option-btn {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 16px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: left;
+    color: var(--text);
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 15px;
+    font-weight: 500;
+    position: relative;
+    overflow: hidden;
+  }
+  .option-btn:hover:not(:disabled) {
+    border-color: var(--accent);
+    background: rgba(0,229,255,0.05);
+    transform: translateX(3px);
+  }
+  .option-btn:disabled { cursor: default; opacity: 0.6; }
+  .option-btn.correct { border-color: var(--accent3); background: rgba(57,255,122,0.05); color: var(--text-bright); }
+  .option-btn.wrong { border-color: var(--accent2); background: rgba(255,60,110,0.05); }
+  .option-btn.neutral { border-color: var(--warn); background: rgba(255,179,0,0.05); }
+  .option-key {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    color: var(--text-dim);
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 2px 7px;
+    min-width: 22px;
+    text-align: center;
+    flex-shrink: 0;
+  }
+
+  /* Feedback panel */
+  .feedback-panel {
+    padding: 0 20px 16px;
+    display: none;
+  }
+  .feedback-panel.visible { display: block; }
+  .feedback-card {
+    border-radius: 8px;
+    padding: 16px;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+  }
+  .feedback-card.good {
+    background: rgba(57,255,122,0.06);
+    border: 1px solid rgba(57,255,122,0.25);
+  }
+  .feedback-card.bad {
+    background: rgba(255,60,110,0.06);
+    border: 1px solid rgba(255,60,110,0.25);
+  }
+  .feedback-card.ok {
+    background: rgba(255,179,0,0.06);
+    border: 1px solid rgba(255,179,0,0.25);
+  }
+  .feedback-icon { font-size: 24px; flex-shrink: 0; }
+  .feedback-content { flex: 1; }
+  .feedback-verdict {
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--text-bright);
+    margin-bottom: 4px;
+  }
+  .feedback-explain {
+    font-size: 14px;
+    color: var(--text-dim);
+    line-height: 1.6;
+  }
+  .feedback-explain .highlight { color: var(--accent); font-weight: 600; }
+  .feedback-explain .red { color: var(--accent2); font-weight: 600; }
+  .feedback-explain .green { color: var(--accent3); font-weight: 600; }
+  .next-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 12px;
+    background: var(--accent);
+    color: var(--bg);
+    border: none;
+    border-radius: 6px;
+    padding: 10px 20px;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 1px;
+  }
+  .next-btn:hover { background: #33ecff; box-shadow: var(--glow); transform: translateY(-1px); }
+
+  /* Right panel: red flags / clues */
+  .clues-panel {
+    width: 240px;
+    min-width: 240px;
+    background: var(--panel);
+    border-left: 1px solid var(--border);
+    padding: 20px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .clues-title {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+  }
+  .clue-item {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    padding: 10px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 13px;
+    color: var(--text-dim);
+    line-height: 1.5;
+    opacity: 0;
+    transition: all 0.4s;
+  }
+  .clue-item.revealed {
+    opacity: 1;
+    border-color: rgba(255,179,0,0.3);
+    background: rgba(255,179,0,0.04);
+  }
+  .clue-item.safe-clue.revealed {
+    border-color: rgba(57,255,122,0.3);
+    background: rgba(57,255,122,0.04);
+  }
+  .clue-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+
+  /* ── RESULT SCREEN ── */
+  #result-screen {
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    text-align: center;
+    background: radial-gradient(ellipse at 50% 50%, rgba(0,229,255,0.05) 0%, transparent 60%);
+  }
+
+  .result-icon {
+    font-size: 72px;
+    margin-bottom: 16px;
+    animation: float 3s ease-in-out infinite;
+  }
+  .result-title {
+    font-family: 'Orbitron', monospace;
+    font-size: clamp(24px, 5vw, 36px);
+    font-weight: 900;
+    margin-bottom: 8px;
+  }
+  .result-title.win { color: var(--accent3); text-shadow: var(--glow-green); }
+  .result-title.loss { color: var(--accent2); text-shadow: var(--glow-red); }
+  .result-sub {
+    font-size: 18px;
+    color: var(--text-dim);
+    margin-bottom: 32px;
+    max-width: 440px;
+  }
+
+  .result-stats {
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+    margin-bottom: 40px;
+    flex-wrap: wrap;
+  }
+  .stat-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px 28px;
+    min-width: 120px;
+  }
+  .stat-num {
+    font-family: 'Orbitron', monospace;
+    font-size: 36px;
+    font-weight: 700;
+    color: var(--accent);
+    text-shadow: var(--glow);
+  }
+  .stat-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 1px;
+    color: var(--text-dim);
+    margin-top: 4px;
+  }
+
+  .result-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+  .btn-primary {
+    background: var(--accent);
+    color: var(--bg);
+    border: none;
+    border-radius: 8px;
+    padding: 14px 28px;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    letter-spacing: 1px;
+    transition: all 0.2s;
+  }
+  .btn-primary:hover { background: #33ecff; box-shadow: var(--glow); transform: translateY(-2px); }
+  .btn-secondary {
+    background: transparent;
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 28px;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    letter-spacing: 1px;
+    transition: all 0.2s;
+  }
+  .btn-secondary:hover { border-color: var(--accent); color: var(--accent); transform: translateY(-2px); }
+
+  /* Typing indicator */
+  .typing-indicator {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 0;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .typing-indicator.visible { opacity: 1; }
+  .typing-dots { display: flex; gap: 4px; }
+  .typing-dot {
+    width: 6px; height: 6px;
+    background: var(--text-dim);
+    border-radius: 50%;
+    animation: typingBounce 1.2s infinite;
+  }
+  .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+  .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes typingBounce { 0%,80%,100%{transform:translateY(0)} 40%{transform:translateY(-6px)} }
+  .typing-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+
+  /* Flash overlay */
+  .flash-overlay {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 500;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  .flash-overlay.red { background: rgba(255,60,110,0.15); }
+  .flash-overlay.green { background: rgba(57,255,122,0.1); }
+
+  /* Score popup */
+  .score-popup {
+    position: fixed;
+    top: 80px;
+    right: 20px;
+    font-family: 'Orbitron', monospace;
+    font-size: 20px;
+    font-weight: 700;
+    pointer-events: none;
+    z-index: 600;
+    opacity: 0;
+    transform: translateY(0);
+    transition: all 0.8s;
+  }
+  .score-popup.show {
+    opacity: 1;
+    transform: translateY(-30px);
+  }
+  .score-popup.plus { color: var(--accent3); text-shadow: var(--glow-green); }
+  .score-popup.minus { color: var(--accent2); text-shadow: var(--glow-red); }
+
+  /* Mobile responsive */
+  @media (max-width: 900px) {
+    .scenario-panel, .clues-panel { display: none; }
+    .game-body { height: calc(100vh - 60px); }
+  }
+  @media (max-width: 600px) {
+    .msg-bubble { max-width: 85%; }
+  }
+</style>
+</head>
+<body>
+
+<div class="flash-overlay" id="flash"></div>
+<div class="score-popup" id="scorePopup"></div>
+
+<!-- INTRO SCREEN -->
+<div class="screen active" id="intro-screen">
+  <div class="logo-wrap">
+    <span class="logo-icon">🎣</span>
+    <div class="logo-title">PHISHGUARD</div>
+    <div class="logo-sub">// CYBER AWARENESS TRAINING //</div>
+  </div>
+  <p class="intro-desc">
+    Hackers are getting smarter. Can you spot their tricks? 
+    <strong>Real-world phishing simulations</strong> — from spam to surgical spear attacks. 
+    Make the right calls. Protect your identity.
+  </p>
+  <div class="level-select">
+    <h3>// SELECT DIFFICULTY //</h3>
+    <button class="level-btn easy" onclick="startGame('easy')">
+      <span class="lv-num">01</span>
+      <span class="lv-info">
+        <div class="lv-name">Too Obvious</div>
+        <div class="lv-desc">Classic scams — Nigerian prince, fake prize emails</div>
+      </span>
+      <span class="lv-badge">BEGINNER</span>
+    </button>
+    <button class="level-btn medium" onclick="startGame('medium')">
+      <span class="lv-num">02</span>
+      <span class="lv-info">
+        <div class="lv-name">Looks Real</div>
+        <div class="lv-desc">Bank alerts, streaming services, school portals</div>
+      </span>
+      <span class="lv-badge">INTERMEDIATE</span>
+    </button>
+    <button class="level-btn hard" onclick="startGame('hard')">
+      <span class="lv-num">03</span>
+      <span class="lv-info">
+        <div class="lv-name">Targeted Attack</div>
+        <div class="lv-desc">Spear phishing — friends, admins, multi-step traps</div>
+      </span>
+      <span class="lv-badge">ADVANCED</span>
+    </button>
+  </div>
+</div>
+
+<!-- GAME SCREEN -->
+<div class="screen" id="game-screen">
+  <!-- Top bar -->
+  <div>
+    <div class="topbar">
+      <div class="topbar-left">
+        <span class="topbar-logo">PHISHGUARD</span>
+        <span class="topbar-level" id="topbar-level">LVL 01 / SCENARIO 1</span>
+      </div>
+      <div class="topbar-right">
+        <div class="score-wrap">
+          <span class="score-label">SCORE</span>
+          <span class="score-val" id="score-display">0</span>
+        </div>
+        <div class="health-wrap" id="health-display">
+          <span class="heart">♥</span><span class="heart">♥</span><span class="heart">♥</span>
+        </div>
+      </div>
+    </div>
+    <div class="progress-bar-wrap">
+      <div class="progress-bar" id="progress-bar" style="width:0%"></div>
+    </div>
+  </div>
+
+  <!-- Body -->
+  <div class="game-body">
+    <!-- Left panel -->
+    <div class="scenario-panel">
+      <div>
+        <div class="scenario-title">// CURRENT SCENARIO</div>
+        <div class="scenario-name" id="scenario-name">Loading...</div>
+      </div>
+      <div class="scenario-context" id="scenario-context">...</div>
+      <div class="threat-meter">
+        <div class="threat-label">// THREAT LEVEL</div>
+        <div class="threat-bar-outer">
+          <div class="threat-bar-inner" id="threat-bar" style="width:20%;background:#39ff7a"></div>
+        </div>
+        <div class="threat-level-text" id="threat-text" style="color:#39ff7a">LOW</div>
+      </div>
+      <div class="tip-box">
+        <div class="tip-box-label">// TRAINING TIP</div>
+        <div class="tip-box-text" id="tip-text">Always verify the sender's address before clicking any link.</div>
+      </div>
+    </div>
+
+    <!-- Chat area -->
+    <div class="chat-panel">
+      <div class="chat-messages" id="chat-messages">
+        <div class="typing-indicator" id="typing-indicator">
+          <div class="typing-dots">
+            <div class="typing-dot"></div>
+            <div class="typing-dot"></div>
+            <div class="typing-dot"></div>
+          </div>
+          <span class="typing-label">message incoming...</span>
+        </div>
+      </div>
+
+      <div class="feedback-panel" id="feedback-panel">
+        <div class="feedback-card" id="feedback-card">
+          <div class="feedback-icon" id="feedback-icon">✅</div>
+          <div class="feedback-content">
+            <div class="feedback-verdict" id="feedback-verdict">Great call!</div>
+            <div class="feedback-explain" id="feedback-explain">You identified the threat correctly.</div>
+            <button class="next-btn" id="next-btn" onclick="nextScenario()">Continue →</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="options-area" id="options-area">
+        <div class="options-label">// WHAT DO YOU DO?</div>
+        <div class="options-grid" id="options-grid"></div>
+      </div>
+    </div>
+
+    <!-- Right panel: clues -->
+    <div class="clues-panel">
+      <div class="clues-title">// RED FLAGS</div>
+      <div id="clues-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- RESULT SCREEN -->
+<div class="screen" id="result-screen">
+  <div class="result-icon" id="result-icon">🛡️</div>
+  <div class="result-title" id="result-title">MISSION COMPLETE</div>
+  <div class="result-sub" id="result-sub">You kept your data safe. Not bad, agent.</div>
+  <div class="result-stats">
+    <div class="stat-card">
+      <div class="stat-num" id="final-score">0</div>
+      <div class="stat-label">FINAL SCORE</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num" id="final-correct">0</div>
+      <div class="stat-label">CORRECT CALLS</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num" id="final-caught">0</div>
+      <div class="stat-label">THREATS CAUGHT</div>
+    </div>
+  </div>
+  <div class="result-actions">
+    <button class="btn-primary" onclick="restartGame()">PLAY AGAIN</button>
+    <button class="btn-secondary" onclick="changeLevel()">CHANGE LEVEL</button>
+  </div>
+</div>
+
+<script>
+// ─────────────────────────────────────────
+// SCENARIO DATA
+// ─────────────────────────────────────────
+const SCENARIOS = {
+  easy: [
+    {
+      name: "The Big Winner! 🎰",
+      context: "You just checked your email on a Tuesday morning.",
+      tip: "Legitimate contests don't ask for payment to claim prizes.",
+      threat: 90,
+      clues: [
+        { icon: "⚠️", text: "Sender is from a free Gmail address, not a real company", type: "red" },
+        { icon: "⚠️", text: 'Extreme urgency: "RESPOND IN 24 HOURS"', type: "red" },
+        { icon: "⚠️", text: "Asks for bank account to 'transfer prize money'", type: "red" },
+        { icon: "⚠️", text: "You never entered any contest", type: "red" }
+      ],
+      messages: [
+        {
+          type: "system",
+          content: "— New Email Received —"
+        },
+        {
+          type: "email",
+          level: "dangerous",
+          from: "international.lottery.prize@gmail.com",
+          fromDisplay: "INTERNATIONAL LOTTERY BOARD",
+          to: "you@email.com",
+          subject: "🎉 CONGRATULATIONS! You've WON $2,450,000 USD!!!",
+          body: `<p>Dear <strong>Valued Winner</strong>,</p>
+          <p>We are <span class="email-urgent">DELIGHTED</span> to inform you that your email address was RANDOMLY SELECTED as the WINNER of our International Online Lottery!</p>
+          <p>Prize Amount: <strong>$2,450,000 USD</strong></p>
+          <p class="email-urgent">⚠️ YOU MUST RESPOND WITHIN 24 HOURS OR YOUR PRIZE WILL BE FORFEITED!</p>
+          <p>To claim your winnings, reply with your: Full Name, Address, Phone Number, and Bank Account Number.</p>
+          <p>Yours faithfully,<br>Sir John Adeyemi<br>Claims Processing Director</p>`
+        }
+      ],
+      options: [
+        { text: "Reply with my info to claim the prize", type: "wrong", key: "A",
+          feedback: { type: "bad", verdict: "🚨 Identity Stolen!", explain: 'This is a classic <span class="red">advance-fee scam</span> (Nigerian prince variant). No real lottery contacts you out of nowhere. Giving your bank account info hands criminals everything they need. The fake urgency and Gmail sender address are dead giveaways. <span class="green">Never share financial or personal info</span> with unsolicited contacts.' }},
+        { text: "Click the link to see the official lottery website", type: "wrong", key: "B",
+          feedback: { type: "bad", verdict: "⚠️ Risky Move!", explain: 'There\'s no link here, but even if there were — clicking unsolicited links is dangerous. This email has <span class="red">no link</span>, which is actually a sign they want you to engage directly so they can manipulate you. <span class="green">Never engage with suspicious prize emails.</span>' }},
+        { text: "Delete and ignore it", type: "correct", key: "C",
+          feedback: { type: "good", verdict: "✅ Smart! Dodged the hook.", explain: 'Perfect. This is a textbook <span class="highlight">advance-fee fraud</span>. Red flags: <span class="red">Gmail sender</span> (not a real lottery org), you never entered, they want bank info, extreme fake urgency. Deleting is the right call. Bonus: you could also report it as spam.' }},
+        { text: "Mark as spam and report phishing", type: "correct", key: "D",
+          feedback: { type: "good", verdict: "🏆 Best Response!", explain: 'Excellent! Reporting phishing helps your email provider <span class="green">protect others</span> from the same scam. This is the gold-standard response: don\'t engage, don\'t click, report it so the algorithm learns to block similar attacks.' }}
+      ]
+    },
+    {
+      name: "Prince in Trouble 👑",
+      context: "A direct message arrives in your inbox from an unknown sender.",
+      tip: "Any offer that requires you to pay money upfront to receive more money is a scam.",
+      threat: 85,
+      clues: [
+        { icon: "⚠️", text: "Elaborate backstory to gain trust — classic manipulation", type: "red" },
+        { icon: "⚠️", text: "Asks you to send money first to unlock a bigger sum", type: "red" },
+        { icon: "⚠️", text: "Promises impossibly high returns", type: "red" },
+        { icon: "✅", text: "You have no connection to this person", type: "safe" }
+      ],
+      messages: [
+        { type: "system", content: "— New Direct Message —" },
+        { type: "bubble",
+          avatar: "👤",
+          name: "Alhaji Musa Ibrahim",
+          content: "Hello dear friend, I am the son of the late General Ibrahim Musa of Nigeria. I found your name through a business directory and believe you are a person of integrity."
+        },
+        { type: "bubble",
+          avatar: "👤",
+          name: "Alhaji Musa Ibrahim",
+          content: "My father left $48.5 MILLION USD in a private account. Due to political instability I cannot access it without a foreign partner. I will give you 30% = $14,550,000 if you help me transfer it. I only need $500 from you first to cover bank processing fees. Please keep this STRICTLY CONFIDENTIAL."
+        }
+      ],
+      options: [
+        { text: "Send the $500 — the $14 million would change my life!", type: "wrong", key: "A",
+          feedback: { type: "bad", verdict: "🚨 Account Drained!", explain: 'You fell for an <span class="red">advance-fee scam</span>. After you send $500, they\'ll invent new fees — legal fees, bribe fees, tax fees — until you stop sending money. No millions ever arrive. These scams have stolen billions globally. <span class="green">Rule: Never send money to receive money.</span>' }},
+        { text: "Ask for more details and their phone number", type: "wrong", key: "B",
+          feedback: { type: "bad", verdict: "⚠️ You Engaged!", explain: 'Even just responding lets the scammer know your account is active. They\'ll <span class="red">escalate pressure</span> and may get your phone number for further manipulation. Engaging with scammers is never safe, even out of curiosity.' }},
+        { text: "Block and report the account", type: "correct", key: "C",
+          feedback: { type: "good", verdict: "✅ Threat Neutralized!", explain: 'The right call! This is one of the <span class="highlight">oldest scams on the internet</span>: an elaborate story, a massive promised sum, and a small upfront "fee" to unlock it. Blocking prevents further contact; reporting protects the platform community.' }},
+        { text: "Report to local cybercrime authorities", type: "correct", key: "D",
+          feedback: { type: "good", verdict: "🏆 Cyber Hero!", explain: 'Outstanding! Reporting to cybercrime agencies (like the IC3 in the US or Action Fraud in the UK) helps investigators <span class="green">track and shut down scam operations</span>. These aren\'t small-time — they\'re organized criminal networks.' }}
+      ]
+    }
+  ],
+
+  medium: [
+    {
+      name: "Your Account Is Suspended",
+      context: "You receive an email on your phone while at school.",
+      tip: "Always check the actual URL a link points to, not just the display text.",
+      threat: 70,
+      clues: [
+        { icon: "⚠️", text: "Sender domain is 'netfl1x-billing.com' — not netflix.com", type: "red" },
+        { icon: "⚠️", text: "Creates urgency with 'suspended account' threat", type: "red" },
+        { icon: "⚠️", text: "Link goes to a fake domain, not the real site", type: "red" },
+        { icon: "✅", text: "Real Netflix would show your account name in the email", type: "safe" }
+      ],
+      messages: [
+        { type: "system", content: "— New Email Received — 9:42 AM —" },
+        {
+          type: "email",
+          level: "suspicious",
+          from: "no-reply@netfl1x-billing.com",
+          fromDisplay: "Netflix",
+          to: "you@email.com",
+          subject: "Action Required: Your account has been suspended",
+          body: `<p>Hi <strong>Customer</strong>,</p>
+          <p>We were <span class="email-urgent">unable to validate your billing information</span> for the next billing cycle.</p>
+          <p>To avoid interruption to your service, please update your payment details within <strong>24 hours</strong>.</p>
+          <p>Click below to update your billing info:</p>
+          <p><a class="email-link dangerous-link" href="#">netfl1x-accounts-verify.com/update</a></p>
+          <p>If you do not update your information, your account will be permanently deleted.</p>
+          <p>The Netflix Team</p>`
+        }
+      ],
+      options: [
+        { text: "Click the link and update my payment info", type: "wrong", key: "A",
+          feedback: { type: "bad", verdict: "🚨 Credit Card Stolen!", explain: 'That link goes to a <span class="red">fake website</span> designed to look like Netflix. The domain is <span class="red">netfl1x-billing.com</span> — notice the "1" instead of "i". Any info you enter goes straight to hackers. This is called a <span class="highlight">credential harvesting attack</span>.' }},
+        { text: "Check the sender's email address", type: "correct", key: "B",
+          feedback: { type: "good", verdict: "✅ Sharp Eye!", explain: 'Smart! The sender says "Netflix" but the actual address is <span class="red">netfl1x-billing.com</span> — not netflix.com. Legitimate companies always email from their <span class="green">official domain</span>. This single check exposes the scam.' }},
+        { text: "Go directly to netflix.com to check account status", type: "correct", key: "C",
+          feedback: { type: "good", verdict: "🏆 Best Practice!", explain: 'This is the <span class="green">gold standard response</span>. Instead of clicking email links, always navigate directly to the official website. If there\'s a real problem with your account, you\'ll see it there. This technique is called <span class="highlight">direct navigation</span> and defeats phishing every time.' }},
+        { text: "Forward it to friends to warn them", type: "neutral", key: "D",
+          feedback: { type: "ok", verdict: "⚠️ Risky Intention", explain: 'While the thought is good, forwarding phishing emails can <span class="red">spread the attack</span>. The link becomes clickable for your friends. Instead, warn people verbally or report it to your email provider\'s phishing team.' }}
+      ]
+    },
+    {
+      name: "Urgent Bank Alert",
+      context: "You're at home when your phone buzzes with an SMS.",
+      tip: "Banks will never ask for your full password or PIN via text message.",
+      threat: 75,
+      clues: [
+        { icon: "⚠️", text: "Sender is a short code, not your bank's official number", type: "red" },
+        { icon: "⚠️", text: "Asks you to 'verify' by calling a suspicious number", type: "red" },
+        { icon: "⚠️", text: "Urgency: 'suspicious transaction' creates panic", type: "red" },
+        { icon: "✅", text: "Your real bank's number is on the back of your card", type: "safe" }
+      ],
+      messages: [
+        { type: "system", content: "— SMS Received — 3:17 PM —" },
+        {
+          type: "sms",
+          from: "+1-855-BANK-SEC",
+          content: "SECURITY ALERT: Your TD Bank account has been LOCKED due to suspicious activity. A transaction of $847.50 was attempted. To verify and unlock, call us immediately: 1-800-555-3847 or click: td-bank-secure.net/verify"
+        },
+        { type: "system", content: "— 2 minutes later —" },
+        {
+          type: "sms",
+          from: "+1-855-BANK-SEC",
+          content: "URGENT: If you do not verify within 30 minutes your account will be permanently suspended and funds frozen. Act NOW."
+        }
+      ],
+      options: [
+        { text: "Call the number in the text message", type: "wrong", key: "A",
+          feedback: { type: "bad", verdict: "🚨 Voice Phishing Trap!", explain: 'That phone number connects to <span class="red">scammers pretending to be bank agents</span>. They\'ll ask for your account number, password, and security codes to "verify" your identity. This is called <span class="highlight">vishing (voice phishing)</span>. Never call numbers from unsolicited texts.' }},
+        { text: "Click the verification link in the text", type: "wrong", key: "B",
+          feedback: { type: "bad", verdict: "🚨 Credentials Stolen!", explain: '<span class="red">td-bank-secure.net</span> is a fake domain — the real bank is td.com. That link leads to a login page that harvests your username and password. Always check the domain carefully. A hyphenated bank domain is almost always fake.' }},
+        { text: "Call the number on the back of my bank card", type: "correct", key: "C",
+          feedback: { type: "good", verdict: "✅ Textbook Safe Response!", explain: 'Perfect execution! Your bank\'s <span class="green">official phone number</span> is on the back of your card or on their official website. If the text was legitimate, calling the real bank will confirm it. If not, you\'ve avoided a trap. This is exactly what security experts recommend.' }},
+        { text: "Ignore and delete — I'll log in to the app myself", type: "correct", key: "D",
+          feedback: { type: "good", verdict: "✅ Smart Defense!", explain: 'Great instinct! Opening your <span class="green">bank\'s official app</span> directly (from your phone\'s app store or saved bookmark) to check account activity is the safest approach. No transactions will appear if it\'s fake — and if there\'s a real issue, you\'ll see it safely.' }}
+      ]
+    },
+    {
+      name: "School Portal Login",
+      context: "A classmate sends you a message with a link.",
+      tip: "Shared links from friends can still be malicious — friends get hacked too.",
+      threat: 65,
+      clues: [
+        { icon: "⚠️", text: "The URL uses HTTP not HTTPS — no encryption", type: "red" },
+        { icon: "⚠️", text: "Domain is 'studentporta1.edu' — '1' replacing 'l'", type: "red" },
+        { icon: "⚠️", text: "Your friend might already be compromised", type: "red" },
+        { icon: "✅", text: "Your school portal URL is bookmarked on your device", type: "safe" }
+      ],
+      messages: [
+        { type: "system", content: "— WhatsApp Message —" },
+        {
+          type: "bubble",
+          avatar: "😊",
+          name: "Jamie (classmate)",
+          content: "hey!! did u see they updated the grade portal?? my marks finally went up lol. here's the new link they emailed us: http://studentporta1.edu/login"
+        },
+        {
+          type: "bubble",
+          avatar: "😊",
+          name: "Jamie (classmate)",
+          content: "u have to log in again bc they reset passwords. it's kinda annoying but whatever 😅"
+        }
+      ],
+      options: [
+        { text: "Click the link — Jamie seems trustworthy", type: "wrong", key: "A",
+          feedback: { type: "bad", verdict: "🚨 School Account Hacked!", explain: 'Jamie\'s account may itself be <span class="red">compromised</span>, and scammers are using it to spread the attack. Notice: <span class="red">http</span> (not https), and <span class="red">porTa1</span> with the number 1 instead of letter l. This is a <span class="highlight">homograph/typosquatting attack</span> combined with social engineering.' }},
+        { text: "Check the URL carefully before clicking", type: "correct", key: "B",
+          feedback: { type: "good", verdict: "✅ Detail-Oriented!", explain: 'Excellent habit! Before clicking any link, hover or long-press to preview the URL. Here you\'d spot: <span class="red">http://</span> (insecure), and <span class="red">porTa1.edu</span> — that\'s a "1" not an "l". These are classic <span class="highlight">typosquatting</span> tricks.' }},
+        { text: "Ask Jamie if they sent this and if it's the real site", type: "correct", key: "C",
+          feedback: { type: "good", verdict: "✅ Social Verification!", explain: 'Smart! Calling or messaging Jamie through a <span class="green">different channel</span> (voice call, in person) to verify is a solid defence. But go further — verify the URL itself against what\'s saved in your browser bookmarks or check with your school IT department.' }},
+        { text: "Go directly to my saved school portal bookmark", type: "correct", key: "D",
+          feedback: { type: "good", verdict: "🏆 Habit of a Cyber Pro!", explain: 'The best possible answer. Using a <span class="green">saved, verified bookmark</span> means you will always reach the real site — no fake links can trick you. This habit alone defeats the vast majority of phishing attacks.' }}
+      ]
+    }
+  ],
+
+  hard: [
+    {
+      name: "Message from Your Best Friend",
+      context: "It's a Friday night. You get a DM from your best friend's account.",
+      tip: "If something feels off about a friend's message — call them. Accounts get hijacked.",
+      threat: 60,
+      clues: [
+        { icon: "⚠️", text: "Unusual request — not how your friend normally talks", type: "red" },
+        { icon: "⚠️", text: "Asking for gift card codes — a common fraud payment method", type: "red" },
+        { icon: "⚠️", text: "Requests secrecy: 'don't tell anyone'", type: "red" },
+        { icon: "⚠️", text: "Sense of manufactured urgency and embarrassment", type: "red" }
+      ],
+      messages: [
+        { type: "system", content: "— Instagram DM — Alex Rodriguez —" },
+        {
+          type: "bubble",
+          avatar: "🧑",
+          name: "Alex (best friend)",
+          content: "hey... i'm so embarrassed to ask this but i'm in kind of an emergency"
+        },
+        {
+          type: "bubble",
+          avatar: "🧑",
+          name: "Alex (best friend)",
+          content: "my wallet got stolen and i need to pay for my Uber home. can you buy a $100 Google Play gift card and send me the code? i'll pay you back tomorrow i promise"
+        },
+        {
+          type: "bubble",
+          avatar: "🧑",
+          name: "Alex (best friend)",
+          content: "please don't tell my parents, i don't want them to worry. i just need the code quickly"
+        }
+      ],
+      options: [
+        { text: "Buy the gift card and send the code right away", type: "wrong", key: "A",
+          feedback: { type: "bad", verdict: "🚨 $100 Stolen! Account Hijacked!", explain: 'Alex\'s account was <span class="red">hacked</span>. Gift card codes are untraceable — once sent, the money is gone forever. This is called an <span class="highlight">account takeover + social engineering</span> attack. The secrecy request is a classic manipulation tactic to prevent you from verifying.' }},
+        { text: "Call Alex on their actual phone number", type: "correct", key: "B",
+          feedback: { type: "good", verdict: "✅ One Call Saves $100!", explain: 'Perfect! A <span class="green">real voice call</span> to Alex\'s actual number immediately exposes the scam — the real Alex won\'t know anything about this. This is the fastest and most reliable way to verify: <span class="highlight">switch communication channels</span>.' }},
+        { text: "Ask a personal question only the real Alex would know", type: "correct", key: "C",
+          feedback: { type: "good", verdict: "✅ Smart Verification!", explain: 'Good instinct! But be careful — scammers who\'ve been watching the account may know <span class="red">public information</span> like school name or hometown. The safest verification is a <span class="green">live phone call or video call</span>, not text-based questions.' }},
+        { text: "Ask why they need a gift card (not cash app/PayPal)", type: "correct", key: "D",
+          feedback: { type: "good", verdict: "✅ Critical Thinking!", explain: 'Excellent observation! <span class="red">Gift card codes</span> are untraceable — no refunds, no tracking, favored by scammers for exactly this reason. A real friend in an emergency would use Venmo, e-transfer, or call their parents. When someone insists on gift cards: <span class="highlight">it\'s always a scam</span>.' }}
+      ]
+    },
+    {
+      name: "Teacher's Request",
+      context: "Monday morning. You get an email from your professor's address.",
+      tip: "Spear phishing uses personal details to make fake emails seem credible.",
+      threat: 55,
+      clues: [
+        { icon: "⚠️", text: "Email asks you to take action outside normal school systems", type: "red" },
+        { icon: "⚠️", text: "Requests gift cards — schools never operate this way", type: "red" },
+        { icon: "⚠️", text: "Asks for secrecy — legitimate staff never say 'don't tell anyone'", type: "red" },
+        { icon: "✅", text: "The email address itself may look legitimate — check very carefully", type: "safe" }
+      ],
+      messages: [
+        { type: "system", content: "— Email — 8:03 AM Monday —" },
+        {
+          type: "email",
+          level: "suspicious",
+          from: "dr.patel@university-edu.com",
+          fromDisplay: "Dr. Priya Patel",
+          to: "you@student.university.edu",
+          subject: "Confidential: Quick Favor Needed",
+          body: `<p>Hi,</p>
+          <p>I'm currently in a faculty meeting and can't make phone calls. I have a situation — I'm organizing a surprise award for a student and need to purchase $200 in Amazon gift cards before noon today.</p>
+          <p>Could you purchase these and email me the codes? I will reimburse you in full at our next class. This is time-sensitive.</p>
+          <p>Please keep this between us for now — I don't want to spoil the surprise.</p>
+          <p>Thank you,<br>Dr. Patel</p>`
+        }
+      ],
+      options: [
+        { text: "Buy the gift cards — Dr. Patel has always been trustworthy", type: "wrong", key: "A",
+          feedback: { type: "bad", verdict: "🚨 Spear Phishing Success!", explain: 'This is <span class="highlight">spear phishing</span> — a highly targeted attack using a known person\'s identity. The attacker researched your professor\'s name and crafted a believable story. Notice: <span class="red">university-edu.com</span> — not your school\'s actual domain. The secrecy request is a huge red flag.' }},
+        { text: "Check if the domain matches my university's real email", type: "correct", key: "B",
+          feedback: { type: "good", verdict: "✅ Eagle Eye!", explain: 'Excellent! The sender is <span class="red">dr.patel@university-edu.com</span> — a fake domain. Your school\'s real emails come from @university.edu (or similar). <span class="highlight">Spear phishers</span> often register lookalike domains to impersonate known people. This one check exposes the entire attack.' }},
+        { text: "Email Dr. Patel through the official university directory", type: "correct", key: "C",
+          feedback: { type: "good", verdict: "✅ Verified Through Official Channel!", explain: 'Smart! By finding Dr. Patel\'s email through the <span class="green">official university website</span> and emailing that address — not replying to the suspicious one — you\'ll immediately discover the fraud. Never reply to a suspicious email; find the contact independently.' }},
+        { text: "Report to the university's IT security team", type: "correct", key: "D",
+          feedback: { type: "good", verdict: "🏆 Hero Move!", explain: 'Outstanding! Reporting to your IT/security team means they can <span class="green">warn all students</span> and potentially take down the fake domain. You\'ve just protected your entire university. This is exactly what cybersecurity professionals need from alert users.' }}
+      ]
+    },
+    {
+      name: "The Multi-Step Trap",
+      context: "You get an email, then a follow-up text. Something feels off.",
+      tip: "Multi-step attacks use multiple touchpoints to build false credibility.",
+      threat: 80,
+      clues: [
+        { icon: "⚠️", text: "Email and SMS are coordinated — both arrived within minutes", type: "red" },
+        { icon: "⚠️", text: "Asks you to disable two-factor authentication — huge red flag", type: "red" },
+        { icon: "⚠️", text: "The 'verification code' is YOUR login code being used by hackers", type: "red" },
+        { icon: "⚠️", text: "Legitimate services never ask you to share your 2FA code", type: "red" }
+      ],
+      messages: [
+        { type: "system", content: "— Email — 2:41 PM —" },
+        {
+          type: "email",
+          level: "dangerous",
+          from: "security@paypa1-accounts.com",
+          fromDisplay: "PayPal Security",
+          to: "you@email.com",
+          subject: "Your PayPal account: Unusual login detected",
+          body: `<p>Dear Customer,</p>
+          <p>We detected a <span class="email-urgent">login attempt from an unrecognized device</span> (Moscow, Russia) on your account.</p>
+          <p>To secure your account, we've sent a verification code to your phone. Please provide this code to our security team via the link below to confirm it's really you:</p>
+          <p><a class="email-link dangerous-link" href="#">paypa1-verify-secure.com/confirm</a></p>`
+        },
+        { type: "system", content: "— SMS — 2 minutes later —" },
+        {
+          type: "sms",
+          from: "PayPal",
+          content: "PayPal: Your security code is 847291. Valid for 10 minutes. Do NOT share this code with anyone."
+        },
+        { type: "system", content: "— Email reply arrives —" },
+        {
+          type: "bubble",
+          avatar: "🔒",
+          name: "PayPal Security Team",
+          content: "Thank you for contacting us. To complete verification, please reply with the 6-digit code sent to your phone. This will confirm your identity and secure your account."
+        }
+      ],
+      options: [
+        { text: "Share the 6-digit code — I need to secure my account!", type: "wrong", key: "A",
+          feedback: { type: "bad", verdict: "🚨 Account Fully Compromised!", explain: 'This is a <span class="highlight">real-time phishing attack</span>. Here\'s what happened: the hacker tried to log into YOUR PayPal, which triggered the real 2FA code to your phone. By sharing that code, you gave them access. The SMS saying "Do NOT share" was the real PayPal — <span class="red">the scammer engineered you to ignore that warning</span>.' }},
+        { text: "Recognize the coordinated email + SMS as a staged attack", type: "correct", key: "B",
+          feedback: { type: "good", verdict: "🏆 Advanced Threat Detected!", explain: 'Brilliant! This is a <span class="highlight">multi-vector, real-time phishing attack</span>. The hacker sent the email, then triggered a real PayPal login (generating the real SMS), then asked you to hand over the code. Noticing that the email and SMS arrived together — and that <span class="red">no legitimate service asks for your 2FA code</span> — is advanced threat recognition.' }},
+        { text: "Log into PayPal directly to check for alerts", type: "correct", key: "C",
+          feedback: { type: "good", verdict: "✅ Bypassed the Trap!", explain: 'Smart! Going directly to <span class="green">paypal.com</span> (not the link in the email) lets you check your account safely. If there was a real security alert, you\'d see it there. You\'d also notice: you were likely never logged in from Russia at all.' }},
+        { text: "Never share a 2FA code — that rule applies here", type: "correct", key: "D",
+          feedback: { type: "good", verdict: "✅ Core Rule Applied!", explain: 'This is the most important rule in cybersecurity: <span class="green">NEVER share a 2FA/OTP code with anyone</span>. Not with "support teams," not with "security departments." The moment someone asks for your verification code, the conversation is over. This rule alone defeats entire categories of attack.' }}
+      ]
+    }
+  ]
+};
+
+// ─────────────────────────────────────────
+// GAME STATE
+// ─────────────────────────────────────────
+let state = {
+  level: 'easy',
+  scenarioIndex: 0,
+  score: 0,
+  health: 3,
+  correctCount: 0,
+  caughtCount: 0,
+  scenarios: [],
+  answered: false
+};
+
+function startGame(level) {
+  state.level = level;
+  state.scenarios = SCENARIOS[level];
+  state.scenarioIndex = 0;
+  state.score = 0;
+  state.health = 3;
+  state.correctCount = 0;
+  state.caughtCount = 0;
+
+  showScreen('game-screen');
+  loadScenario();
+}
+
+function loadScenario() {
+  const s = state.scenarios[state.scenarioIndex];
+  if (!s) { showResult(); return; }
+
+  state.answered = false;
+
+  // Update topbar
+  const lvNames = { easy: 'BEGINNER', medium: 'INTERMEDIATE', hard: 'ADVANCED' };
+  document.getElementById('topbar-level').textContent =
+    `${lvNames[state.level]} / SCENARIO ${state.scenarioIndex + 1}/${state.scenarios.length}`;
+
+  // Update progress bar
+  const pct = (state.scenarioIndex / state.scenarios.length) * 100;
+  document.getElementById('progress-bar').style.width = pct + '%';
+
+  // Update left panel
+  document.getElementById('scenario-name').textContent = s.name;
+  document.getElementById('scenario-context').textContent = s.context;
+  document.getElementById('tip-text').textContent = s.tip;
+
+  // Threat meter
+  const tb = document.getElementById('threat-bar');
+  const tt = document.getElementById('threat-text');
+  const t = s.threat;
+  let color, label;
+  if (t >= 80) { color = '#ff3c6e'; label = 'CRITICAL'; }
+  else if (t >= 60) { color = '#ffb300'; label = 'HIGH'; }
+  else if (t >= 40) { color = '#00e5ff'; label = 'MEDIUM'; }
+  else { color = '#39ff7a'; label = 'LOW'; }
+  tb.style.width = t + '%';
+  tb.style.background = color;
+  tt.textContent = label;
+  tt.style.color = color;
+
+  // Update health display
+  updateHealth();
+  // Update score
+  document.getElementById('score-display').textContent = state.score;
+
+  // Clear chat
+  const chat = document.getElementById('chat-messages');
+  chat.innerHTML = '<div class="typing-indicator visible" id="typing-indicator"><div class="typing-dots"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div><span class="typing-label">message incoming...</span></div>';
+
+  // Hide feedback
+  const fp = document.getElementById('feedback-panel');
+  fp.classList.remove('visible');
+
+  // Clear and enable options
+  renderOptions(s.options);
+
+  // Clear clues
+  renderClues(s.clues);
+
+  // Load messages with delay
+  loadMessages(s.messages);
+}
+
+async function loadMessages(messages) {
+  const chat = document.getElementById('chat-messages');
+
+  for (let i = 0; i < messages.length; i++) {
+    const m = messages[i];
+    await delay(i === 0 ? 900 : 700);
+
+    // Remove typing indicator if present
+    const ti = document.getElementById('typing-indicator');
+    if (ti) ti.remove();
+
+    if (m.type === 'system') {
+      const el = document.createElement('div');
+      el.className = 'msg system';
+      el.innerHTML = `<div class="msg-bubble">${m.content}</div>`;
+      chat.appendChild(el);
+    } else if (m.type === 'email') {
+      const el = document.createElement('div');
+      el.className = `email-mock ${m.level}`;
+      el.innerHTML = `
+        <div class="email-header">
+          <div class="email-row"><span class="email-field">FROM</span><span class="email-val ${m.level === 'dangerous' ? 'spoofed' : 'suspicious-addr'}">${m.from}</span></div>
+          <div class="email-row"><span class="email-field">TO</span><span class="email-val">${m.to}</span></div>
+          <div class="email-row"><span class="email-field email-subject">SUBJ</span><span class="email-val email-subject">${m.subject}</span></div>
+        </div>
+        <div class="email-body">${m.body}</div>
+      `;
+      chat.appendChild(el);
+    } else if (m.type === 'sms') {
+      const el = document.createElement('div');
+      el.className = 'sms-wrap';
+      el.innerHTML = `
+        <div style="font-size:28px">📱</div>
+        <div class="sms-bubble">
+          <div class="sms-sender">${m.from}</div>
+          ${m.content}
+        </div>
+      `;
+      chat.appendChild(el);
+    } else if (m.type === 'bubble') {
+      const el = document.createElement('div');
+      el.className = 'msg incoming';
+      el.innerHTML = `
+        <div class="msg-avatar">${m.avatar}</div>
+        <div>
+          <div style="font-size:11px;color:var(--text-dim);font-family:'Share Tech Mono',monospace;margin-bottom:4px;">${m.name}</div>
+          <div class="msg-bubble">${m.content}</div>
+        </div>
+      `;
+      chat.appendChild(el);
+    }
+
+    // Add typing indicator back if more messages coming
+    if (i < messages.length - 1) {
+      const ti2 = document.createElement('div');
+      ti2.className = 'typing-indicator visible';
+      ti2.id = 'typing-indicator';
+      ti2.innerHTML = `<div class="typing-dots"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div><span class="typing-label">typing...</span>`;
+      chat.appendChild(ti2);
+    }
+
+    chat.scrollTop = chat.scrollHeight;
+  }
+
+  // Reveal clues one by one after messages
+  revealClues();
+}
+
+function renderOptions(options) {
+  const grid = document.getElementById('options-grid');
+  grid.innerHTML = '';
+  options.forEach((opt, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'option-btn';
+    btn.innerHTML = `<span class="option-key">${opt.key}</span>${opt.text}`;
+    btn.onclick = () => handleChoice(opt, btn, i, options);
+    grid.appendChild(btn);
+  });
+}
+
+function renderClues(clues) {
+  const list = document.getElementById('clues-list');
+  list.innerHTML = '';
+  clues.forEach(c => {
+    const el = document.createElement('div');
+    el.className = `clue-item ${c.type === 'safe' ? 'safe-clue' : ''}`;
+    el.innerHTML = `<span class="clue-icon">${c.icon}</span><span>${c.text}</span>`;
+    list.appendChild(el);
+  });
+}
+
+async function revealClues() {
+  await delay(1200);
+  const items = document.querySelectorAll('.clue-item');
+  for (let i = 0; i < items.length; i++) {
+    await delay(400);
+    items[i].classList.add('revealed');
+  }
+}
+
+function handleChoice(opt, btn, idx, allOptions) {
+  if (state.answered) return;
+  state.answered = true;
+
+  // Disable all buttons
+  const allBtns = document.querySelectorAll('.option-btn');
+  allBtns.forEach(b => b.disabled = true);
+
+  // Mark chosen button
+  if (opt.type === 'correct') {
+    btn.classList.add('correct');
+    state.score += 100;
+    state.correctCount++;
+    state.caughtCount++;
+    showScorePopup('+100', 'plus');
+    flash('green');
+  } else if (opt.type === 'wrong') {
+    btn.classList.add('wrong');
+    state.health = Math.max(0, state.health - 1);
+    updateHealth();
+    showScorePopup('-1 ♥', 'minus');
+    flash('red');
+  } else {
+    btn.classList.add('neutral');
+    state.score += 30;
+    showScorePopup('+30', 'plus');
+  }
+
+  document.getElementById('score-display').textContent = state.score;
+
+  // Show "your choice" bubble
+  const chat = document.getElementById('chat-messages');
+  const choiceBubble = document.createElement('div');
+  choiceBubble.className = 'msg outgoing';
+  choiceBubble.innerHTML = `
+    <div class="msg-avatar">🧑‍💻</div>
+    <div class="msg-bubble">${opt.text}</div>
+  `;
+  chat.appendChild(choiceBubble);
+  chat.scrollTop = chat.scrollHeight;
+
+  // Show feedback
+  setTimeout(() => showFeedback(opt.feedback), 400);
+}
+
+function showFeedback(fb) {
+  const panel = document.getElementById('feedback-panel');
+  const card = document.getElementById('feedback-card');
+  const icon = document.getElementById('feedback-icon');
+  const verdict = document.getElementById('feedback-verdict');
+  const explain = document.getElementById('feedback-explain');
+
+  card.className = `feedback-card ${fb.type === 'good' ? 'good' : fb.type === 'bad' ? 'bad' : 'ok'}`;
+  icon.textContent = fb.type === 'good' ? '✅' : fb.type === 'bad' ? '🚨' : '⚠️';
+  verdict.textContent = fb.verdict;
+  explain.innerHTML = fb.explain;
+
+  // Update next button text
+  const nextBtn = document.getElementById('next-btn');
+  const isLast = state.scenarioIndex >= state.scenarios.length - 1;
+  nextBtn.textContent = isLast ? 'See Results →' : 'Next Scenario →';
+
+  panel.classList.add('visible');
+}
+
+function nextScenario() {
+  if (state.health <= 0) { showResult(); return; }
+  state.scenarioIndex++;
+  if (state.scenarioIndex >= state.scenarios.length) {
+    showResult();
+  } else {
+    loadScenario();
+  }
+}
+
+function showResult() {
+  showScreen('result-screen');
+
+  const total = state.scenarios.length;
+  const pct = Math.round((state.correctCount / total) * 100);
+
+  let icon, title, titleClass, sub;
+  if (pct >= 80) {
+    icon = '🛡️'; title = 'THREAT NEUTRALIZED'; titleClass = 'win';
+    sub = 'Outstanding. Your instincts are sharp — hackers don\'t stand a chance against you.';
+  } else if (pct >= 50) {
+    icon = '🔐'; title = 'MISSION PARTIAL'; titleClass = 'win';
+    sub = 'Not bad, but some attacks got through. Keep training — the real threats are cleverer.';
+  } else {
+    icon = '💀'; title = 'SYSTEM COMPROMISED'; titleClass = 'loss';
+    sub = 'The attackers won this round. Review the clues and try again — knowledge is your firewall.';
+  }
+
+  document.getElementById('result-icon').textContent = icon;
+  document.getElementById('result-title').textContent = title;
+  document.getElementById('result-title').className = `result-title ${titleClass}`;
+  document.getElementById('result-sub').textContent = sub;
+  document.getElementById('final-score').textContent = state.score;
+  document.getElementById('final-correct').textContent = state.correctCount + '/' + total;
+  document.getElementById('final-caught').textContent = state.caughtCount;
+
+  // Update progress bar to 100%
+  document.getElementById('progress-bar').style.width = '100%';
+}
+
+function restartGame() { startGame(state.level); }
+function changeLevel() { showScreen('intro-screen'); }
+
+// ─────────────────────────────────────────
+// UTILITIES
+// ─────────────────────────────────────────
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function updateHealth() {
+  const hearts = document.querySelectorAll('.heart');
+  hearts.forEach((h, i) => {
+    h.classList.toggle('lost', i >= state.health);
+  });
+}
+
+function flash(type) {
+  const f = document.getElementById('flash');
+  f.className = `flash-overlay ${type}`;
+  f.style.opacity = '1';
+  setTimeout(() => f.style.opacity = '0', 300);
+}
+
+function showScorePopup(text, cls) {
+  const p = document.getElementById('scorePopup');
+  p.textContent = text;
+  p.className = `score-popup ${cls}`;
+  p.classList.add('show');
+  setTimeout(() => {
+    p.classList.remove('show');
+  }, 800);
+}
+
+function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// Keyboard shortcuts
+document.addEventListener('keydown', e => {
+  if (document.getElementById('game-screen').classList.contains('active') && !state.answered) {
+    const keys = { 'a': 0, 'b': 1, 'c': 2, 'd': 3 };
+    const idx = keys[e.key.toLowerCase()];
+    if (idx !== undefined) {
+      const btn = document.querySelectorAll('.option-btn')[idx];
+      if (btn && !btn.disabled) btn.click();
+    }
+  }
+  if (e.key === 'Enter') {
+    const nextBtn = document.getElementById('next-btn');
+    if (document.getElementById('feedback-panel').classList.contains('visible')) {
+      nextBtn.click();
+    }
+  }
+});
+</script>
+</body>
+</html>

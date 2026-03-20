@@ -2,7 +2,7 @@ import { AlertTriangle, CheckCircle2, Mail, MessageSquareWarning, Shield } from 
 import { AnimatePresence, motion } from 'motion/react'
 import { useMemo, useState } from 'react'
 
-type Difficulty = 'Beginner' | 'Analyst' | 'Expert'
+type Difficulty = 'Beginner' | 'Intermediate' | 'Advanced' | 'Expert'
 
 type Scenario = {
   id: number
@@ -47,7 +47,7 @@ const levels: Level[] = [
     ],
   },
   {
-    key: 'Analyst',
+    key: 'Intermediate',
     subtitle: 'Mixed signals and social engineering',
     hint: 'Verify sender identity and cross-check links before you click.',
     scenarios: [
@@ -67,6 +67,31 @@ const levels: Level[] = [
         message:
           'Open enrollment closes Friday. Review options in the official HR portal from the employee intranet homepage.',
         explanation: 'Refers to official access path and avoids suspicious redirection.',
+        safe: true,
+      },
+    ],
+  },
+  {
+    key: 'Advanced',
+    subtitle: 'Personalized and contextual lures',
+    hint: 'Watch for impersonation and unusual requests that use familiar context.',
+    scenarios: [
+      {
+        id: 1,
+        title: 'Friend Account Recovery Link',
+        channel: 'SMS',
+        message:
+          'Hey, I am locked out of my account. Can you log in with your details on this page to verify my identity for support?',
+        explanation: 'Even trusted contacts can be compromised. Never enter credentials on shared links.',
+        safe: false,
+      },
+      {
+        id: 2,
+        title: 'Campus IT Maintenance Notice',
+        channel: 'Email',
+        message:
+          'Scheduled maintenance tonight at 11 PM. Services may be unavailable briefly. Use your normal portal after downtime ends.',
+        explanation: 'No sensitive data requested and it directs users to the standard portal workflow.',
         safe: true,
       },
     ],
@@ -189,7 +214,7 @@ function App() {
               <p className="max-w-2xl text-balance text-lg text-slate-300">
                 Train your instinct against phishing attempts by classifying live-style messages as safe or malicious.
               </p>
-              <div className="grid gap-4 md:grid-cols-3">
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                 {levels.map((level, levelIndex) => (
                   <motion.button
                     key={level.key}

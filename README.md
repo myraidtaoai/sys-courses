@@ -1,73 +1,148 @@
-# React + TypeScript + Vite
+# PhishGuard: Interactive Phishing Awareness Game
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+PhishGuard is a scenario-driven serious game that trains players to recognize and respond to phishing attacks under realistic pressure.
 
-Currently, two official plugins are available:
+Instead of a simple quiz, the experience is designed as a choose-your-path interactive story where decisions create immediate consequences.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Core Game Concept
 
-## React Compiler
+- The player takes a role such as student, intern, gamer, or influencer.
+- The game delivers suspicious communications through chat-style messages: emails, texts, and DMs.
+- The player chooses an action in each situation.
+- Each choice branches to a good or bad outcome.
+- The game explains why the action was safe or risky.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Learning Objectives
 
-## Expanding the ESLint configuration
+Players should learn to detect and respond to:
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+- Suspicious links
+- Fake urgency (for example: "ACT NOW")
+- Spoofed sender addresses
+- Too-good-to-be-true offers
+- Requests for sensitive information
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## Game Mechanics
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+### 1) Scenario-Based Conversations
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+Each level is a scenario with realistic context.
+
+Example:
+
+- Message: "Your Netflix account is suspended. Verify now."
+- Player options:
+  - Click link immediately
+  - Check sender email
+  - Ignore
+  - Report as phishing
+
+### 2) Immediate Feedback Loop
+
+After each choice, the game gives:
+
+- A short explanation
+- A visual consequence (for example: account hacked, no incident, report success)
+
+### 3) Branching Outcomes
+
+Choices materially change progression:
+
+- Good path: player remains secure
+- Bad path: simulated compromise (identity theft, account takeover, data loss)
+
+### 4) Difficulty Tiers
+
+- Beginner: obvious phishing signals
+- Intermediate: realistic and more subtle deception
+- Advanced: targeted spear-phishing patterns
+
+## Suggested Level Structure
+
+### Level 1: Too Obvious
+
+- Fake prize email
+- Classic advance-fee style scam
+
+### Level 2: Looks Real
+
+- Bank security alert
+- School portal credential prompt
+
+### Level 3: Personalized Attack
+
+- Message impersonating a friend
+- Teacher or admin impersonation
+
+### Level 4: Multi-Step Attack
+
+- Initial email
+- Fake login page
+- Follow-up message that escalates pressure
+
+## Differentiator: Conversational UX
+
+PhishGuard focuses on emotional realism, not static Q and A.
+
+Real attacks exploit urgency, confusion, and social pressure. The chat-style interface recreates those conditions so players practice good decisions in context.
+
+## Gamification
+
+- Security Awareness Score
+- Phish Meter indicating risk exposure
+- Badge progression:
+  - Link Detective
+  - Spoof Buster
+- Optional timer rounds for high-pressure scenarios
+
+## Product Direction
+
+### MVP (Current Direction)
+
+- Frontend: React 19 + TypeScript
+- Styling: Tailwind CSS 4 with custom theming and Inter typography
+- Icons: Lucide React
+- Animation: Motion
+- UI pattern: chat-like message flow with branching decisions
+
+### Future Enhancement
+
+- Dynamic scenario generation with OpenAI API
+- Reduced predictability for replayability
+- More adaptive and realistic phishing simulations
+
+## What To Avoid
+
+Do not reduce the game to a binary quiz.
+
+Bad approach:
+
+- "Is this phishing? Yes or No"
+
+Good approach:
+
+- Place the player inside realistic pressure and ambiguity
+- Make consequences visible and memorable
+
+## Local Development
+
+### Prerequisites
+
+- Node.js 20+
+- npm 10+
+
+### Run
+
+```bash
+npm install
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Then open the local URL shown in terminal (usually `http://localhost:5173`).
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+### Quality Checks
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm run lint
+npm run build
 ```

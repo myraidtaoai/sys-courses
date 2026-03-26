@@ -1,15 +1,21 @@
-import { AlertTriangle, CheckCircle2, Mail, MessageSquareWarning, Shield, X } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, Mail, MessageSquare, MessageSquareWarning, Shield, X } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useMemo, useState } from 'react'
+import { ChatSimulation } from './components/ChatSimulation'
 import { levels, type Level } from './data/scenarios'
+import { chatScenarios, type ChatScenario } from './data/chatScenarios'
 
 function App() {
   const [selectedLevel, setSelectedLevel] = useState<Level | null>(null)
+  const [selectedChatScenario, setSelectedChatScenario] = useState<ChatScenario | null>(null)
   const [index, setIndex] = useState(0)
   const [score, setScore] = useState(0)
   const [feedback, setFeedback] = useState<string | null>(null)
   const [isComplete, setIsComplete] = useState(false)
   const [isScenarioModalOpen, setIsScenarioModalOpen] = useState(false)
+  const [chatScore, setChatScore] = useState(0)
+  const [chatCount, setChatCount] = useState(0)
+  const [isInChatMode, setIsInChatMode] = useState(false)
 
   const currentScenario = selectedLevel?.scenarios[index]
   const isRiskyScenario = currentScenario ? !currentScenario.safe : false
@@ -20,6 +26,13 @@ function App() {
     }
     return Math.round((score / selectedLevel.scenarios.length) * 100)
   }, [score, selectedLevel])
+
+  const chatAccuracy = useMemo(() => {
+    if (chatCount === 0) {
+      return 0
+    }
+    return Math.round((chatScore / chatCount) * 100)
+  }, [chatScore, chatCount])
 
   const progress = selectedLevel
     ? Math.min((index / selectedLevel.scenarios.length) * 100, 100)
@@ -32,6 +45,33 @@ function App() {
     setFeedback(null)
     setIsComplete(false)
     setIsScenarioModalOpen(false)
+    setIsInChatMode(false)
+  }
+
+  const startChatDrill = () => {
+    setIsInChatMode(true)
+    const randomScenario = chatScenarios[Math.floor(Math.random() * chatScenarios.length)]
+    setSelectedChatScenario(randomScenario)
+    setChatCount(0)
+    setChatScore(0)
+  }
+
+  const handleChatComplete = (_correct: boolean, points: number) => {
+    setChatScore(chatScore + points)
+    setChatCount(chatCount + 1)
+
+    setTimeout(() => {
+      if (chatCount + 1 >= 3) {
+        setIsComplete(true)
+        return
+      }
+      const randomScenario = chatScenarios[Math.floor(Math.random() * chatScenarios.length)]
+      setSelectedChatScenario(randomScenario)
+    }, 2500)
+  }
+
+  const closeChatScenario = () => {
+    setSelectedChatScenario(null)
   }
 
   const handleAnswer = (userThinksSafe: boolean) => {
@@ -62,11 +102,15 @@ function App() {
 
   const restart = () => {
     setSelectedLevel(null)
+    setSelectedChatScenario(null)
     setIndex(0)
     setScore(0)
+    setChatScore(0)
+    setChatCount(0)
     setFeedback(null)
     setIsComplete(false)
     setIsScenarioModalOpen(false)
+    setIsInChatMode(false)
   }
 
   return (
@@ -88,7 +132,7 @@ function App() {
         </header>
 
         <AnimatePresence mode="wait">
-          {!selectedLevel && (
+          {!selectedLevel && !isInChatMode && (
             <motion.section
               key="level-select"
               initial={{ opacity: 0, y: 24 }}
@@ -100,13 +144,28 @@ function App() {
               <p className="max-w-2xl text-balance text-lg text-slate-300">
                 Train your instinct against phishing attempts by classifying live-style messages as safe or malicious.
               </p>
-              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+                <motion.button
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0 }}
+                  onClick={startChatDrill}
+                  className="group rounded-2xl border border-slate-700 bg-slate-900/70 p-5 text-left transition hover:-translate-y-1 hover:border-purple-300/60 hover:shadow-[0_20px_50px_-24px_rgba(168,85,247,0.7)]"
+                >
+                  <p className="text-sm font-semibold uppercase tracking-[0.2em] text-purple-300">AI Chat</p>
+                  <h2 className="mt-2 text-xl font-semibold text-white">Live Conversation</h2>
+                  <p className="mt-4 text-sm leading-6 text-slate-400">Chat with an AI contact and determine if they're legitimate or an attacker.</p>
+                  <div className="mt-6 inline-flex items-center gap-2 text-sm text-purple-200">
+                    <MessageSquare className="h-4 w-4" />
+                    3 scenarios
+                  </div>
+                </motion.button>
                 {levels.map((level, levelIndex) => (
                   <motion.button
                     key={level.key}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.08 * levelIndex }}
+                    transition={{ delay: 0.08 * (levelIndex + 1) }}
                     onClick={() => chooseLevel(level)}
                     className="group rounded-2xl border border-slate-700 bg-slate-900/70 p-5 text-left transition hover:-translate-y-1 hover:border-cyan-300/60 hover:shadow-[0_20px_50px_-24px_rgba(34,211,238,0.7)]"
                   >
@@ -287,6 +346,14 @@ function App() {
             </motion.section>
           )}
 
+          {isInChatMode && selectedChatScenario && (
+            <ChatSimulation
+              scenario={selectedChatScenario}
+              onComplete={handleChatComplete}
+              onClose={closeChatScenario}
+            />
+          )}
+
           {selectedLevel && isComplete && (
             <motion.section
               key="complete"
@@ -300,6 +367,28 @@ function App() {
               <p className="mt-4 text-slate-300">
                 You finished the <span className="font-semibold text-cyan-100">{selectedLevel.key}</span> track with
                 an accuracy of <span className="font-semibold text-emerald-200">{accuracy}%</span>.
+              </p>
+              <button
+                onClick={restart}
+                className="mt-7 rounded-xl border border-cyan-300/50 bg-cyan-400/10 px-5 py-3 font-semibold text-cyan-100 transition hover:bg-cyan-400/20"
+              >
+                Run Another Drill
+              </button>
+            </motion.section>
+          )}
+
+          {isInChatMode && isComplete && (
+            <motion.section
+              key="chat-complete"
+              initial={{ opacity: 0, scale: 0.97 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.35 }}
+              className="mx-auto mt-10 w-full max-w-2xl rounded-3xl border border-purple-300/30 bg-slate-900/80 p-8 text-center"
+            >
+              <CheckCircle2 className="mx-auto h-16 w-16 text-emerald-300" />
+              <h2 className="mt-4 text-3xl font-semibold text-white">Drill Complete</h2>
+              <p className="mt-4 text-slate-300">
+                You completed 3 AI Chat scenarios with an accuracy of <span className="font-semibold text-emerald-200">{chatAccuracy}%</span>.
               </p>
               <button
                 onClick={restart}

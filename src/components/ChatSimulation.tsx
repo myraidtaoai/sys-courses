@@ -1,4 +1,4 @@
-import { AlertTriangle, CheckCircle2, MessageSquare, X } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, MessageSquare, Send, X } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useState } from 'react'
 import { type ChatScenario, type UserChoice } from '../data/chatScenarios'
@@ -17,6 +17,7 @@ export function ChatSimulation({ scenario, onComplete, onClose }: ChatSimulation
   const [isAwaitingJudgment, setIsAwaitingJudgment] = useState(false)
   const [judgmentMade, setJudgmentMade] = useState(false)
   const [userJudgmentWasPhishing, setUserJudgmentWasPhishing] = useState(false)
+  const [inputText, setInputText] = useState('')
 
   const currentMessage = scenario.messages[messageIndex]
   const isComplete = messageIndex >= scenario.messages.length - 1
@@ -76,8 +77,8 @@ export function ChatSimulation({ scenario, onComplete, onClose }: ChatSimulation
       </div>
 
       {/* Chat Messages */}
-      <div className="flex flex-1 flex-col gap-4 rounded-2xl border border-slate-700 bg-slate-900/40 p-5">
-        <div className="space-y-4 overflow-y-auto pr-2">
+      <div className="flex flex-1 flex-col rounded-2xl border border-slate-700 bg-slate-900/40">
+        <div className="flex-1 space-y-4 overflow-y-auto p-5">
           <AnimatePresence mode="wait">
             {scenario.messages.slice(0, messageIndex + 1).map((msg) => (
               <ChatMessage
@@ -94,9 +95,9 @@ export function ChatSimulation({ scenario, onComplete, onClose }: ChatSimulation
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="mt-2 space-y-2 border-t border-slate-700/50 pt-4"
+            className="space-y-2 border-t border-slate-700/50 px-5 py-4"
           >
-            <p className="text-xs uppercase tracking-[0.15em] text-slate-400">Your response:</p>
+            <p className="text-xs uppercase tracking-[0.15em] text-slate-400">Quick responses:</p>
             <div className="space-y-2">
               {currentMessage.choices.map((choice) => (
                 <motion.button
@@ -110,6 +111,38 @@ export function ChatSimulation({ scenario, onComplete, onClose }: ChatSimulation
               ))}
             </div>
           </motion.div>
+        )}
+
+        {/* Text Input Box */}
+        {!judgmentMade && !isAwaitingJudgment && (
+          <div className="border-t border-slate-700/50 p-4">
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={inputText}
+                onChange={(e) => setInputText(e.target.value)}
+                placeholder="Type a message..."
+                disabled={!currentMessage?.choices || isComplete}
+                className="flex-1 rounded-lg border border-slate-600 bg-slate-800/70 px-4 py-2 text-sm text-slate-100 placeholder-slate-400 outline-none transition focus:border-cyan-400/50 focus:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && inputText.trim()) {
+                    e.preventDefault()
+                  }
+                }}
+              />
+              <motion.button
+                whileTap={{ scale: 0.95 }}
+                disabled={!inputText.trim() || !currentMessage?.choices || isComplete}
+                className="rounded-lg border border-cyan-400/30 bg-cyan-500/10 p-2 text-cyan-200 transition hover:bg-cyan-500/20 disabled:opacity-30 disabled:cursor-not-allowed"
+                aria-label="Send message"
+              >
+                <Send className="h-5 w-5" />
+              </motion.button>
+            </div>
+            <p className="mt-2 text-xs text-slate-500">
+              {currentMessage?.choices ? 'Use quick responses above to continue the conversation' : 'Waiting for response...'}
+            </p>
+          </div>
         )}
       </div>
 

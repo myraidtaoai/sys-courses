@@ -37,48 +37,68 @@ Example:
   - Ignore
   - Report as phishing
 
-### 2) Immediate Feedback Loop
+### 2) AI-Driven Chat Simulation (NEW)
+
+The app now includes an interactive "AI Chat Drill" mode where:
+
+- Users chat with an AI-controlled contact whose true nature is unknown
+- Each persona is randomly either a **genuine colleague/manager/customer** or a **phishing attacker**
+- The conversation unfolds through 3-4 message exchanges with branching user choices
+- After the dialogue, users must make a judgment: **Trust & Continue** or **Report as Phishing**
+- Each drill includes 3 randomized scenarios drawn from 8 pre-scripted conversations
+- Results show detailed explanations with red flags (for phishing) or good signs (for legitimate)
+
+**Why this works:**
+- Users cannot predict the scenario outcome based on name or title alone
+- Dialogue reveals clues progressively, teaching pattern recognition
+- Multi-turn format mirrors real social engineering attempts
+- Judgment phase forces active decision-making, not passive reading
+
+### 3) Immediate Feedback Loop
 
 After each choice, the game gives:
 
 - A short explanation
 - A visual consequence (for example: account hacked, no incident, report success)
 
-### 3) Branching Outcomes
+### 4) Branching Outcomes
 
 Choices materially change progression:
 
 - Good path: player remains secure
 - Bad path: simulated compromise (identity theft, account takeover, data loss)
 
-### 4) Difficulty Tiers
+- Beginner: obvious phishing signals, fake prizes, classic scams
+- Intermediate: realistic scenarios, mixed signals, vendor impersonation
+- Advanced: personalized and contextual lures, impersonation of trusted contacts
+- Expert: advanced BEC (Business Email Compromise), CEO fraud, legal hold threats
 
-- Beginner: obvious phishing signals
-- Intermediate: realistic and more subtle deception
-- Advanced: targeted spear-phishing patterns
+## Gameplay Modes
 
-## Suggested Level Structure
+### Traditional Message Review
 
-### Level 1: Too Obvious
+Choose from 4 difficulty levels (Beginner, Intermediate, Advanced, Expert). Each level presents a series of message scenarios presented in a mobile-style interface. Players classify each message as "Safe" or "Phishing" and receive feedback.
 
-- Fake prize email
-- Classic advance-fee style scam
+### AI Chat Drill
 
-### Level 2: Looks Real
+Engage in live conversations with randomized personas. The system randomly selects a character to be either:
 
-- Bank security alert
-- School portal credential prompt
+- ✅ **Legitimate**: A genuine colleague, manager, customer, or partner
+- 🚨 **Phishing Attacker**: Impersonating a legitimate contact or authority
 
-### Level 3: Personalized Attack
+Without knowing which, players must:
 
-- Message impersonating a friend
-- Teacher or admin impersonation
+1. Read the persona and context
+2. Engage in 3-4 message exchanges with branching dialogue choices
+3. Make a final judgment: Trust the contact or Report as Phishing
+4. View detailed analysis explaining clues, red flags, or good security practices
 
-### Level 4: Multi-Step Attack
+**8 Pre-Scripted Scenarios:**
 
-- Initial email
-- Fake login page
-- Follow-up message that escalates pressure
+- Beginner: Bank account verification scam vs. normal team update
+- Intermediate: Vendor payment fraud vs. HR benefits enrollment
+- Advanced: Friend account recovery impersonation vs. IT maintenance notice
+- Expert: CEO wire fraud vs. security training reminder
 
 ## Differentiator: Conversational UX
 

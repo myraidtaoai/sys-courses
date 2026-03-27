@@ -1,7 +1,8 @@
-import { AlertTriangle, CheckCircle2, Mail, MessageSquare, MessageSquareWarning, Shield, X } from 'lucide-react'
+import { AlertTriangle, Bot, CheckCircle2, Mail, MessageSquare, MessageSquareWarning, Shield, X } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useMemo, useState } from 'react'
 import { ChatSimulation } from './components/ChatSimulation'
+import { LiveAIChat } from './components/LiveAIChat'
 import { levels, type Level } from './data/scenarios'
 import { chatScenarios, type ChatScenario } from './data/chatScenarios'
 
@@ -16,6 +17,9 @@ function App() {
   const [chatScore, setChatScore] = useState(0)
   const [chatCount, setChatCount] = useState(0)
   const [isInChatMode, setIsInChatMode] = useState(false)
+  const [isInLiveAIMode, setIsInLiveAIMode] = useState(false)
+  const [liveAIScore, setLiveAIScore] = useState(0)
+  const [liveAICount, setLiveAICount] = useState(0)
 
   const currentScenario = selectedLevel?.scenarios[index]
   const isRiskyScenario = currentScenario ? !currentScenario.safe : false
@@ -34,6 +38,13 @@ function App() {
     return Math.round((chatScore / chatCount) * 100)
   }, [chatScore, chatCount])
 
+  const liveAIAccuracy = useMemo(() => {
+    if (liveAICount === 0) {
+      return 0
+    }
+    return Math.round((liveAIScore / liveAICount) * 100)
+  }, [liveAIScore, liveAICount])
+
   const progress = selectedLevel
     ? Math.min((index / selectedLevel.scenarios.length) * 100, 100)
     : 0
@@ -46,6 +57,7 @@ function App() {
     setIsComplete(false)
     setIsScenarioModalOpen(false)
     setIsInChatMode(false)
+    setIsInLiveAIMode(false)
   }
 
   const startChatDrill = () => {
@@ -54,6 +66,32 @@ function App() {
     setSelectedChatScenario(randomScenario)
     setChatCount(0)
     setChatScore(0)
+  }
+
+  const startLiveAIDrill = () => {
+    setIsInLiveAIMode(true)
+    setLiveAICount(0)
+    setLiveAIScore(0)
+  }
+
+  const handleLiveAIComplete = (wasAttacker: boolean, userGuessedAttacker: boolean) => {
+    const correct = wasAttacker === userGuessedAttacker
+    setLiveAIScore(liveAIScore + (correct ? 1 : 0))
+    setLiveAICount(liveAICount + 1)
+
+    setTimeout(() => {
+      if (liveAICount + 1 >= 3) {
+        setIsComplete(true)
+        return
+      }
+      // Reset for next conversation
+      setIsInLiveAIMode(false)
+      setTimeout(() => setIsInLiveAIMode(true), 100)
+    }, 3000)
+  }
+
+  const closeLiveAI = () => {
+    setIsInLiveAIMode(false)
   }
 
   const handleChatComplete = (_correct: boolean, points: number) => {
@@ -107,10 +145,13 @@ function App() {
     setScore(0)
     setChatScore(0)
     setChatCount(0)
+    setLiveAIScore(0)
+    setLiveAICount(0)
     setFeedback(null)
     setIsComplete(false)
     setIsScenarioModalOpen(false)
     setIsInChatMode(false)
+    setIsInLiveAIMode(false)
   }
 
   return (
@@ -132,7 +173,7 @@ function App() {
         </header>
 
         <AnimatePresence mode="wait">
-          {!selectedLevel && !isInChatMode && (
+          {!selectedLevel && !isInChatMode && !isInLiveAIMode && (
             <motion.section
               key="level-select"
               initial={{ opacity: 0, y: 24 }}
@@ -144,7 +185,7 @@ function App() {
               <p className="max-w-2xl text-balance text-lg text-slate-300">
                 Train your instinct against phishing attempts by classifying live-style messages as safe or malicious.
               </p>
-              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
                 <motion.button
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -153,11 +194,26 @@ function App() {
                   className="group rounded-2xl border border-slate-700 bg-slate-900/70 p-5 text-left transition hover:-translate-y-1 hover:border-purple-300/60 hover:shadow-[0_20px_50px_-24px_rgba(168,85,247,0.7)]"
                 >
                   <p className="text-sm font-semibold uppercase tracking-[0.2em] text-purple-300">AI Chat</p>
-                  <h2 className="mt-2 text-xl font-semibold text-white">Live Conversation</h2>
-                  <p className="mt-4 text-sm leading-6 text-slate-400">Chat with an AI contact and determine if they're legitimate or an attacker.</p>
+                  <h2 className="mt-2 text-xl font-semibold text-white">Pre-Scripted</h2>
+                  <p className="mt-4 text-sm leading-6 text-slate-400">Chat with pre-scripted AI scenarios.</p>
                   <div className="mt-6 inline-flex items-center gap-2 text-sm text-purple-200">
                     <MessageSquare className="h-4 w-4" />
                     3 scenarios
+                  </div>
+                </motion.button>
+                <motion.button
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.04 }}
+                  onClick={startLiveAIDrill}
+                  className="group rounded-2xl border border-slate-700 bg-gradient-to-br from-purple-900/30 to-pink-900/30 p-5 text-left transition hover:-translate-y-1 hover:border-pink-300/60 hover:shadow-[0_20px_50px_-24px_rgba(236,72,153,0.7)]"
+                >
+                  <p className="text-sm font-semibold uppercase tracking-[0.2em] text-pink-300">Live AI</p>
+                  <h2 className="mt-2 text-xl font-semibold text-white">Azure OpenAI</h2>
+                  <p className="mt-4 text-sm leading-6 text-slate-400">Chat with real AI agents. Awareness evaluated.</p>
+                  <div className="mt-6 inline-flex items-center gap-2 text-sm text-pink-200">
+                    <Bot className="h-4 w-4" />
+                    3 drills
                   </div>
                 </motion.button>
                 {levels.map((level, levelIndex) => (
@@ -165,7 +221,7 @@ function App() {
                     key={level.key}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.08 * (levelIndex + 1) }}
+                    transition={{ delay: 0.08 * (levelIndex + 2) }}
                     onClick={() => chooseLevel(level)}
                     className="group rounded-2xl border border-slate-700 bg-slate-900/70 p-5 text-left transition hover:-translate-y-1 hover:border-cyan-300/60 hover:shadow-[0_20px_50px_-24px_rgba(34,211,238,0.7)]"
                   >
@@ -354,6 +410,13 @@ function App() {
             />
           )}
 
+          {isInLiveAIMode && !isComplete && (
+            <LiveAIChat
+              onComplete={handleLiveAIComplete}
+              onClose={closeLiveAI}
+            />
+          )}
+
           {selectedLevel && isComplete && (
             <motion.section
               key="complete"
@@ -390,6 +453,33 @@ function App() {
               <p className="mt-4 text-slate-300">
                 You completed 3 AI Chat scenarios with an accuracy of <span className="font-semibold text-emerald-200">{chatAccuracy}%</span>.
               </p>
+              <button
+                onClick={restart}
+                className="mt-7 rounded-xl border border-cyan-300/50 bg-cyan-400/10 px-5 py-3 font-semibold text-cyan-100 transition hover:bg-cyan-400/20"
+              >
+                Run Another Drill
+              </button>
+            </motion.section>
+          )}
+
+          {isInLiveAIMode && isComplete && (
+            <motion.section
+              key="live-ai-complete"
+              initial={{ opacity: 0, scale: 0.97 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.35 }}
+              className="mx-auto mt-10 w-full max-w-2xl rounded-3xl border border-pink-300/30 bg-gradient-to-br from-purple-900/30 to-pink-900/30 p-8 text-center"
+            >
+              <Bot className="mx-auto h-16 w-16 text-pink-300" />
+              <h2 className="mt-4 text-3xl font-semibold text-white">Live AI Drill Complete</h2>
+              <p className="mt-4 text-slate-300">
+                You completed 3 Azure OpenAI conversations with an accuracy of <span className="font-semibold text-emerald-200">{liveAIAccuracy}%</span>.
+              </p>
+              <div className="mt-6 rounded-xl border border-amber-300/30 bg-amber-400/10 p-4">
+                <p className="text-sm text-amber-100">
+                  <strong>Awareness Evaluation:</strong> The AI agents tracked your suspicion level throughout the conversations based on your responses.
+                </p>
+              </div>
               <button
                 onClick={restart}
                 className="mt-7 rounded-xl border border-cyan-300/50 bg-cyan-400/10 px-5 py-3 font-semibold text-cyan-100 transition hover:bg-cyan-400/20"

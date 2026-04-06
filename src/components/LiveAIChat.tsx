@@ -1,7 +1,8 @@
 import { AlertTriangle, MessageSquare, Send, Shield, X } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useRef, useState } from 'react'
-import { aiService, type AIScenarioContext } from '../services/geminiAI'
+import { agentClient } from '../services/azureAgentClient'
+import type { AIScenarioContext } from '../services/azureAgent'
 
 type Message = {
   id: string
@@ -28,30 +29,33 @@ export function LiveAIChat({ onComplete, onClose }: LiveAIChatProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    if (!aiService.isConfigured()) {
-      setIsConfigured(false)
-      return
+    const initializeChat = async () => {
+      try {
+        const configured = await agentClient.checkConfigured()
+        if (!configured) {
+          setIsConfigured(false)
+          return
+        }
+
+        const { roleDescription, scenario } = await agentClient.initializeAgent()
+        setScenario(scenario)
+        setRoleDescription(roleDescription)
+
+        // Get AI's opening message
+        sendInitialMessage()
+      } catch (error) {
+        console.error('Error initializing chat:', error)
+        setIsConfigured(false)
+      }
     }
 
-    // Initialize random scenario
-    const randomScenario = aiService.getRandomScenario()
-    setScenario(randomScenario)
-    
-    // Randomly choose if AI will be attacker or genuine
-    const isAttacker = Math.random() > 0.5
-    const roleType = isAttacker ? 'attacker' : 'genuine'
-    
-    const role = aiService.initializeAgent(roleType, randomScenario)
-    setRoleDescription(role)
-
-    // Get AI's opening message
-    sendInitialMessage()
+    initializeChat()
   }, [])
 
   const sendInitialMessage = async () => {
     setIsLoading(true)
     try {
-      const response = await aiService.sendMessage('Start the conversation naturally based on the context.')
+      const response = await agentClient.sendMessage('Start the conversation naturally based on the context.')
       
       setMessages([{
         id: '1',
@@ -92,7 +96,7 @@ export function LiveAIChat({ onComplete, onClose }: LiveAIChatProps) {
     setIsLoading(true)
 
     try {
-      const response = await aiService.sendMessage(userMessage.text)
+      const response = await agentClient.sendMessage(userMessage.text)
       
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -112,21 +116,21 @@ export function LiveAIChat({ onComplete, onClose }: LiveAIChatProps) {
         }, 1000)
       }
     } catch (error) {
-      console.error('Gemini API Error:', error)
+      console.error('Azure Agent Error:', error)
       const errorMessage = error instanceof Error ? error.message : 'Unknown error'
       
-      let userFriendlyMessage = '❌ **Error connecting to Gemini API**\n\n'
+      let userFriendlyMessage = '❌ **Error connecting to Azure Agent**\n\n'
       
       if (errorMessage.includes('not configured')) {
-        userFriendlyMessage += '**Problem:** `.env.local` file missing or incomplete\n\n**Solution:** Create `.env.local` with:\n```\nVITE_GEMINI_API_KEY=your-api-key-here\n```\n\nSee `GEMINI_SETUP.md` for details on getting an API key.'
-      } else if (errorMessage.includes('invalid')) {
-        userFriendlyMessage += '**Problem:** API key is invalid\n\n**Solution:**\n1. Go to https://aistudio.google.com/\n2. Get a new API key\n3. Update VITE_GEMINI_API_KEY in `.env.local`\n4. Restart the dev server'
-      } else if (errorMessage.includes('quota')) {
-        userFriendlyMessage += '**Problem:** API quota exceeded\n\n**Solution:** Your Gemini API quota has been reached. Check https://aistudio.google.com/ for usage limits.'
+        userFriendlyMessage += '**Problem:** Backend not configured\n\n**Solution:** Set up Azure OpenAI credentials in `.env.local`:\n- AZURE_OPENAI_ENDPOINT\n- AZURE_OPENAI_API_KEY\n- AZURE_OPENAI_DEPLOYMENT\n- AZURE_OPENAI_API_VERSION\n\nThen restart `npm run dev:backend`.'
+      } else if (errorMessage.includes('authentication')) {
+        userFriendlyMessage += '**Problem:** Azure authentication failed\n\n**Solution:** Verify `AZURE_OPENAI_API_KEY` and `AZURE_OPENAI_ENDPOINT` in `.env.local`, then restart `npm run dev:backend`.'
+      } else if (errorMessage.includes('agent not found')) {
+        userFriendlyMessage += '**Problem:** Model deployment not found\n\n**Solution:** Verify `AZURE_OPENAI_DEPLOYMENT` exists in your Azure OpenAI resource and matches `.env.local`.'
       } else if (errorMessage.includes('not initialized')) {
         userFriendlyMessage += '**Problem:** Chat not properly initialized\n\n**Solution:** Reload the page and try again'
       } else {
-        userFriendlyMessage += `**Error:** ${errorMessage}\n\n**Solution:** Check GEMINI_SETUP.md for troubleshooting`
+        userFriendlyMessage += `**Error:** ${errorMessage}\n\n**Solution:** Check backend logs and Azure configuration`
       }
       
       setMessages(prev => [...prev, {
@@ -155,9 +159,9 @@ export function LiveAIChat({ onComplete, onClose }: LiveAIChatProps) {
         className="flex flex-1 flex-col items-center justify-center gap-4 rounded-2xl border border-slate-700 bg-slate-900/80 p-8 text-center"
       >
         <AlertTriangle className="h-16 w-16 text-amber-300" />
-        <h2 className="text-2xl font-semibold text-white">Azure OpenAI Not Configured</h2>
+        <h2 className="text-2xl font-semibold text-white">Azure Agent Not Configured</h2>
         <p className="max-w-md text-slate-300">
-          Please set up your Azure OpenAI credentials in <code className="rounded bg-slate-800 px-2 py-1">.env.local</code> to use the Live AI Chat feature.
+          Please set up your Azure credentials in <code className="rounded bg-slate-800 px-2 py-1">.env.local</code> to use the Live AI Chat feature.
         </p>
         <p className="text-sm text-slate-400">
           See <code className="rounded bg-slate-800 px-1">AZURE_AI_SETUP.md</code> for instructions.
@@ -190,6 +194,11 @@ export function LiveAIChat({ onComplete, onClose }: LiveAIChatProps) {
           <p className="mt-2 text-xs text-slate-400">
             {scenario?.context || 'Initializing conversation...'}
           </p>
+          {scenario && (
+            <p className="mt-2 text-xs text-cyan-200">
+              Channel: {scenario.channel} • From: {scenario.senderIdentity}
+            </p>
+          )}
         </div>
         <button
           onClick={onClose}
@@ -311,7 +320,7 @@ export function LiveAIChat({ onComplete, onClose }: LiveAIChatProps) {
                 className="rounded-xl border border-emerald-300/40 bg-emerald-400/10 px-4 py-4 font-semibold text-emerald-100 transition hover:bg-emerald-400/20"
               >
                 <Shield className="mx-auto mb-2 h-6 w-6" />
-                Legitimate Contact
+                Trust and Continue
               </motion.button>
               <motion.button
                 whileTap={{ scale: 0.98 }}
@@ -319,7 +328,7 @@ export function LiveAIChat({ onComplete, onClose }: LiveAIChatProps) {
                 className="rounded-xl border border-rose-300/40 bg-rose-400/10 px-4 py-4 font-semibold text-rose-100 transition hover:bg-rose-400/20"
               >
                 <AlertTriangle className="mx-auto mb-2 h-6 w-6" />
-                Phishing Attacker
+                Report as Phishing
               </motion.button>
             </div>
             <div className="mt-4 rounded-xl border border-amber-300/30 bg-amber-400/10 p-3">

@@ -1,22 +1,16 @@
-import { AlertTriangle, Bot, CheckCircle2, Mail, MessageSquare, MessageSquareWarning, Shield, X } from 'lucide-react'
+import { AlertTriangle, Bot, CheckCircle2, Mail, MessageSquareWarning, Shield, X } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useMemo, useState } from 'react'
-import { ChatSimulation } from './components/ChatSimulation'
 import { LiveAIChat } from './components/LiveAIChat'
 import { levels, type Level } from './data/scenarios'
-import { chatScenarios, type ChatScenario } from './data/chatScenarios'
 
 function App() {
   const [selectedLevel, setSelectedLevel] = useState<Level | null>(null)
-  const [selectedChatScenario, setSelectedChatScenario] = useState<ChatScenario | null>(null)
   const [index, setIndex] = useState(0)
   const [score, setScore] = useState(0)
   const [feedback, setFeedback] = useState<string | null>(null)
   const [isComplete, setIsComplete] = useState(false)
   const [isScenarioModalOpen, setIsScenarioModalOpen] = useState(false)
-  const [chatScore, setChatScore] = useState(0)
-  const [chatCount, setChatCount] = useState(0)
-  const [isInChatMode, setIsInChatMode] = useState(false)
   const [isInLiveAIMode, setIsInLiveAIMode] = useState(false)
   const [liveAIScore, setLiveAIScore] = useState(0)
   const [liveAICount, setLiveAICount] = useState(0)
@@ -30,13 +24,6 @@ function App() {
     }
     return Math.round((score / selectedLevel.scenarios.length) * 100)
   }, [score, selectedLevel])
-
-  const chatAccuracy = useMemo(() => {
-    if (chatCount === 0) {
-      return 0
-    }
-    return Math.round((chatScore / chatCount) * 100)
-  }, [chatScore, chatCount])
 
   const liveAIAccuracy = useMemo(() => {
     if (liveAICount === 0) {
@@ -56,16 +43,7 @@ function App() {
     setFeedback(null)
     setIsComplete(false)
     setIsScenarioModalOpen(false)
-    setIsInChatMode(false)
     setIsInLiveAIMode(false)
-  }
-
-  const startChatDrill = () => {
-    setIsInChatMode(true)
-    const randomScenario = chatScenarios[Math.floor(Math.random() * chatScenarios.length)]
-    setSelectedChatScenario(randomScenario)
-    setChatCount(0)
-    setChatScore(0)
   }
 
   const startLiveAIDrill = () => {
@@ -76,8 +54,8 @@ function App() {
 
   const handleLiveAIComplete = (wasAttacker: boolean, userGuessedAttacker: boolean) => {
     const correct = wasAttacker === userGuessedAttacker
-    setLiveAIScore(liveAIScore + (correct ? 1 : 0))
-    setLiveAICount(liveAICount + 1)
+    setLiveAIScore((value) => value + (correct ? 1 : 0))
+    setLiveAICount((value) => value + 1)
 
     setTimeout(() => {
       if (liveAICount + 1 >= 3) {
@@ -94,23 +72,6 @@ function App() {
     setIsInLiveAIMode(false)
   }
 
-  const handleChatComplete = (_correct: boolean, points: number) => {
-    setChatScore(chatScore + points)
-    setChatCount(chatCount + 1)
-
-    setTimeout(() => {
-      if (chatCount + 1 >= 3) {
-        setIsComplete(true)
-        return
-      }
-      const randomScenario = chatScenarios[Math.floor(Math.random() * chatScenarios.length)]
-      setSelectedChatScenario(randomScenario)
-    }, 2500)
-  }
-
-  const closeChatScenario = () => {
-    setSelectedChatScenario(null)
-  }
 
   const handleAnswer = (userThinksSafe: boolean) => {
     if (!currentScenario || !selectedLevel) {
@@ -140,17 +101,13 @@ function App() {
 
   const restart = () => {
     setSelectedLevel(null)
-    setSelectedChatScenario(null)
     setIndex(0)
     setScore(0)
-    setChatScore(0)
-    setChatCount(0)
     setLiveAIScore(0)
     setLiveAICount(0)
     setFeedback(null)
     setIsComplete(false)
     setIsScenarioModalOpen(false)
-    setIsInChatMode(false)
     setIsInLiveAIMode(false)
   }
 
@@ -167,13 +124,19 @@ function App() {
               <h1 className="text-lg font-semibold text-cyan-50">Threat Response Simulator</h1>
             </div>
           </div>
-          <div className="rounded-xl border border-emerald-400/30 bg-emerald-400/10 px-3 py-1 text-sm font-semibold text-emerald-200">
-            Score: {score}
-          </div>
+          {isInLiveAIMode ? (
+            <div className="rounded-xl border border-pink-300/30 bg-pink-400/10 px-3 py-1 text-sm font-semibold text-pink-100">
+              Live AI Score: {liveAIScore}
+            </div>
+          ) : (
+            <div className="rounded-xl border border-emerald-400/30 bg-emerald-400/10 px-3 py-1 text-sm font-semibold text-emerald-200">
+              Score: {score}
+            </div>
+          )}
         </header>
 
         <AnimatePresence mode="wait">
-          {!selectedLevel && !isInChatMode && !isInLiveAIMode && (
+          {!selectedLevel && !isInLiveAIMode && (
             <motion.section
               key="level-select"
               initial={{ opacity: 0, y: 24 }}
@@ -190,26 +153,11 @@ function App() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0 }}
-                  onClick={startChatDrill}
-                  className="group rounded-2xl border border-slate-700 bg-slate-900/70 p-5 text-left transition hover:-translate-y-1 hover:border-purple-300/60 hover:shadow-[0_20px_50px_-24px_rgba(168,85,247,0.7)]"
-                >
-                  <p className="text-sm font-semibold uppercase tracking-[0.2em] text-purple-300">AI Chat</p>
-                  <h2 className="mt-2 text-xl font-semibold text-white">Pre-Scripted</h2>
-                  <p className="mt-4 text-sm leading-6 text-slate-400">Chat with pre-scripted AI scenarios.</p>
-                  <div className="mt-6 inline-flex items-center gap-2 text-sm text-purple-200">
-                    <MessageSquare className="h-4 w-4" />
-                    3 scenarios
-                  </div>
-                </motion.button>
-                <motion.button
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.04 }}
                   onClick={startLiveAIDrill}
                   className="group rounded-2xl border border-slate-700 bg-gradient-to-br from-purple-900/30 to-pink-900/30 p-5 text-left transition hover:-translate-y-1 hover:border-pink-300/60 hover:shadow-[0_20px_50px_-24px_rgba(236,72,153,0.7)]"
                 >
                   <p className="text-sm font-semibold uppercase tracking-[0.2em] text-pink-300">Live AI</p>
-                  <h2 className="mt-2 text-xl font-semibold text-white">Azure OpenAI</h2>
+                  <h2 className="mt-2 text-xl font-semibold text-white">Gemini AI</h2>
                   <p className="mt-4 text-sm leading-6 text-slate-400">Chat with real AI agents. Awareness evaluated.</p>
                   <div className="mt-6 inline-flex items-center gap-2 text-sm text-pink-200">
                     <Bot className="h-4 w-4" />
@@ -221,7 +169,7 @@ function App() {
                     key={level.key}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.08 * (levelIndex + 2) }}
+                    transition={{ delay: 0.08 * (levelIndex + 1) }}
                     onClick={() => chooseLevel(level)}
                     className="group rounded-2xl border border-slate-700 bg-slate-900/70 p-5 text-left transition hover:-translate-y-1 hover:border-cyan-300/60 hover:shadow-[0_20px_50px_-24px_rgba(34,211,238,0.7)]"
                   >
@@ -402,14 +350,6 @@ function App() {
             </motion.section>
           )}
 
-          {isInChatMode && selectedChatScenario && (
-            <ChatSimulation
-              scenario={selectedChatScenario}
-              onComplete={handleChatComplete}
-              onClose={closeChatScenario}
-            />
-          )}
-
           {isInLiveAIMode && !isComplete && (
             <LiveAIChat
               onComplete={handleLiveAIComplete}
@@ -440,28 +380,6 @@ function App() {
             </motion.section>
           )}
 
-          {isInChatMode && isComplete && (
-            <motion.section
-              key="chat-complete"
-              initial={{ opacity: 0, scale: 0.97 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.35 }}
-              className="mx-auto mt-10 w-full max-w-2xl rounded-3xl border border-purple-300/30 bg-slate-900/80 p-8 text-center"
-            >
-              <CheckCircle2 className="mx-auto h-16 w-16 text-emerald-300" />
-              <h2 className="mt-4 text-3xl font-semibold text-white">Drill Complete</h2>
-              <p className="mt-4 text-slate-300">
-                You completed 3 AI Chat scenarios with an accuracy of <span className="font-semibold text-emerald-200">{chatAccuracy}%</span>.
-              </p>
-              <button
-                onClick={restart}
-                className="mt-7 rounded-xl border border-cyan-300/50 bg-cyan-400/10 px-5 py-3 font-semibold text-cyan-100 transition hover:bg-cyan-400/20"
-              >
-                Run Another Drill
-              </button>
-            </motion.section>
-          )}
-
           {isInLiveAIMode && isComplete && (
             <motion.section
               key="live-ai-complete"
@@ -473,7 +391,11 @@ function App() {
               <Bot className="mx-auto h-16 w-16 text-pink-300" />
               <h2 className="mt-4 text-3xl font-semibold text-white">Live AI Drill Complete</h2>
               <p className="mt-4 text-slate-300">
-                You completed 3 Azure OpenAI conversations with an accuracy of <span className="font-semibold text-emerald-200">{liveAIAccuracy}%</span>.
+                You completed 3 live AI conversations with an accuracy of <span className="font-semibold text-emerald-200">{liveAIAccuracy}%</span>.
+              </p>
+              <p className="mt-2 text-slate-300">
+                Final Live AI score: <span className="font-semibold text-cyan-100">{liveAIScore}/3</span>.
+                You earn <span className="font-semibold text-cyan-100">+1</span> for each correct decision.
               </p>
               <div className="mt-6 rounded-xl border border-amber-300/30 bg-amber-400/10 p-4">
                 <p className="text-sm text-amber-100">

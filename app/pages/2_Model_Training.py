@@ -6,6 +6,7 @@ import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
+import json
 import time
 import numpy as np
 import pandas as pd
@@ -21,7 +22,7 @@ from app.utils import (
     load_combined_df, get_or_compute_embeddings,
     get_classifiers, COMBO_KEYS, EMBEDDING_NAMES, CLASSIFIER_NAMES,
     EMB_KEY_MAP, SEED, get_mlflow_tracking_uri, get_mlflow_ui_command,
-    save_trained_classifier,
+    save_trained_classifier, MODEL_STORE_DIR,
 )
 
 st.set_page_config(page_title="Model Training", page_icon="🏋️", layout="wide")
@@ -30,8 +31,19 @@ st.title("🏋️ Model Training")
 MLFLOW_URI  = get_mlflow_tracking_uri()
 EXPERIMENT  = "affective_computing_binary_emotion"
 
+TRAIN_RESULTS_CACHE = MODEL_STORE_DIR / "train_results_cache.json"
+CV_RESULTS_CACHE    = MODEL_STORE_DIR / "cv_results_cache.csv"
+
 mlflow.set_tracking_uri(MLFLOW_URI)
 mlflow.set_experiment(EXPERIMENT)
+
+# ── Restore from disk cache into session state ────────────────────────────────
+if "train_results" not in st.session_state and TRAIN_RESULTS_CACHE.exists():
+    with open(TRAIN_RESULTS_CACHE) as f:
+        st.session_state["train_results"] = json.load(f)
+
+if "cv_df" not in st.session_state and CV_RESULTS_CACHE.exists():
+    st.session_state["cv_df"] = pd.read_csv(CV_RESULTS_CACHE)
 
 # ── Load data & embeddings ────────────────────────────────────────────────────
 if "combined_df" not in st.session_state:
@@ -111,7 +123,18 @@ def get_clf_params(name, clf):
     return {}
 
 
-if st.button("Train All 6 Combinations"):
+_train_cached = "train_results" in st.session_state
+_col_train, _col_retrain = st.columns([2, 1])
+_do_train    = _col_train.button("Train All 6 Combinations", disabled=_train_cached)
+_force_train = _col_retrain.button("Force Retrain", disabled=not _train_cached)
+
+if _force_train:
+    TRAIN_RESULTS_CACHE.unlink(missing_ok=True)
+    for _k in ("train_results", "trained_clfs", "saved_model_paths"):
+        st.session_state.pop(_k, None)
+    st.rerun()
+
+if _do_train:
     classifiers = get_classifiers()
     trained_clfs = {}
     results      = {}
@@ -207,15 +230,44 @@ if st.button("Train All 6 Combinations"):
     st.session_state["trained_clfs"] = trained_clfs
     st.session_state["train_results"] = results
     st.session_state["saved_model_paths"] = saved_paths
+    with open(TRAIN_RESULTS_CACHE, "w") as _f:
+        json.dump(results, _f)
     st.success("All 6 combinations trained, saved to disk, and logged to MLflow.")
+
+if _train_cached:
+    _res = st.session_state["train_results"]
+    _res_df = (
+        pd.DataFrame(_res).T.reset_index()
+        .rename(columns={"index": "Combination"})
+        .sort_values("f1", ascending=False)
+        .reset_index(drop=True)
+    )
+    _best = _res_df.iloc[0]["Combination"]
+    st.success(f"Cached results loaded — best: **{_best}** (F1 = {_res[_best]['f1']:.3f})")
+    st.dataframe(
+        _res_df.style.highlight_max(subset=["f1"], color="#c6efce"),
+        width="content", hide_index=True,
+    )
 
 # ── Section 4: Cross-validation ───────────────────────────────────────────────
 st.header("4. 5-Fold Cross-Validation")
 
-if "trained_clfs" not in st.session_state:
+_cv_cached = "cv_df" in st.session_state
+_cv_needs_train = "trained_clfs" not in st.session_state and not _train_cached
+
+if _cv_needs_train:
     st.info("Run training first.")
 else:
-    if st.button("Run Cross-Validation on All Combinations"):
+    _col_cv, _col_recv = st.columns([2, 1])
+    _do_cv    = _col_cv.button("Run Cross-Validation on All Combinations", disabled=_cv_cached)
+    _force_cv = _col_recv.button("Force Re-run CV", disabled=not _cv_cached)
+
+    if _force_cv:
+        CV_RESULTS_CACHE.unlink(missing_ok=True)
+        st.session_state.pop("cv_df", None)
+        st.rerun()
+
+    if _do_cv:
         classifiers = get_classifiers()
         cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=SEED)
         cv_rows = []
@@ -243,14 +295,16 @@ else:
                     })
 
         cv_df = pd.DataFrame(cv_rows).sort_values("CV F1 (mean)", ascending=False)
+        cv_df.to_csv(CV_RESULTS_CACHE, index=False)
         st.session_state["cv_df"] = cv_df
 
-    if "cv_df" in st.session_state:
+    if _cv_cached:
         cv_df = st.session_state["cv_df"]
-        best_idx = cv_df["CV F1 (mean)"].idxmax()
+        if _cv_cached and not _do_cv:
+            st.success("Cached CV results loaded.")
         st.dataframe(
             cv_df.style.highlight_max(subset=["CV F1 (mean)"], color="#c6efce"),
-            use_container_width=True, hide_index=True,
+            width="content", hide_index=True,
         )
 
 # ── Section 5: MLflow run explorer ────────────────────────────────────────────
@@ -278,18 +332,28 @@ try:
         ]
         display_cols = [c for c in display_cols if c in runs_df.columns]
         runs_display = runs_df[display_cols].rename(columns={
-            "tags.mlflow.runName":   "Run Name",
+            "tags.mlflow.runName":    "Run Name",
             "params.embedding_model": "Embedding",
-            "params.classifier":     "Classifier",
-            "metrics.val_accuracy":  "Val Acc",
-            "metrics.val_f1":        "Val F1",
-            "metrics.val_precision": "Val Prec",
-            "metrics.val_recall":    "Val Rec",
+            "params.classifier":      "Classifier",
+            "metrics.val_accuracy":   "Val Acc",
+            "metrics.val_f1":         "Val F1",
+            "metrics.val_precision":  "Val Prec",
+            "metrics.val_recall":     "Val Rec",
             "metrics.training_time_s": "Time (s)",
-            "start_time":            "Timestamp",
+            "start_time":             "Timestamp",
         })
-        st.dataframe(runs_display.sort_values("Val F1", ascending=False),
-                     use_container_width=True, hide_index=True)
+        if "Timestamp" in runs_display.columns:
+            runs_display["Timestamp"] = pd.to_datetime(
+                runs_display["Timestamp"]
+            ).dt.strftime("%Y-%m-%d %H:%M")
+        for col in ("Val Acc", "Val F1", "Val Prec", "Val Rec"):
+            if col in runs_display.columns:
+                runs_display[col] = pd.to_numeric(runs_display[col], errors="coerce").round(3)
+
+        st.dataframe(
+            runs_display.sort_values("Val F1", ascending=False),
+            width="content", hide_index=True,
+        )
 
         # Bar chart: Val F1 across runs
         if "Val F1" in runs_display.columns and "Run Name" in runs_display.columns:
@@ -302,7 +366,7 @@ try:
                 color_continuous_scale="Blues",
             )
             fig_mlflow.update_layout(height=350, showlegend=False)
-            st.plotly_chart(fig_mlflow, use_container_width=True)
+            st.plotly_chart(fig_mlflow, width="content")
 
 except Exception as e:
     st.warning(f"Could not load MLflow runs: {e}")

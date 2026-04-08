@@ -10,3 +10,4 @@ embeddings/siglip2_embeddings.npz
 /mlruns
 /models
 /app/.cache
+*.pyc

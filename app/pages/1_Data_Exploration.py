@@ -57,7 +57,7 @@ summary_rows.append({
     "Neutral": int((combined_df["label"] == "neutral").sum()),
     "Happy": int((combined_df["label"] == "happy").sum()),
 })
-col1.dataframe(pd.DataFrame(summary_rows), use_container_width=True, hide_index=True)
+col1.dataframe(pd.DataFrame(summary_rows), width="content", hide_index=True)
 
 # Split sizes
 split_df = pd.DataFrame({
@@ -70,7 +70,7 @@ fig_split = px.bar(
     title="Train / Val / Test Split Sizes",
 )
 fig_split.update_layout(showlegend=False, height=300)
-col2.plotly_chart(fig_split, use_container_width=True)
+col2.plotly_chart(fig_split, width="content")
 
 # ── Section 2: Sample images ──────────────────────────────────────────────────
 st.header("2. Sample Images")
@@ -89,7 +89,7 @@ for emotion in ["neutral", "happy"]:
     for col, (_, row) in zip(cols, samples.iterrows()):
         try:
             img = Image.open(row["filepath"]).convert("RGB")
-            col.image(img, use_container_width=True, caption=Path(row["filepath"]).name)
+            col.image(img, width="content", caption=Path(row["filepath"]).name)
         except Exception as e:
             col.warning(f"Cannot load image:\n{e}")
 
@@ -166,7 +166,7 @@ fig_clip = px.scatter(
     labels={"x": "dim 1", "y": "dim 2"},
 )
 fig_clip.update_traces(marker_size=4)
-col_l.plotly_chart(fig_clip, use_container_width=True)
+col_l.plotly_chart(fig_clip, width="content")
 
 fig_sig = px.scatter(
     plot_df_sig, x="x", y="y", color="Emotion",
@@ -175,4 +175,4 @@ fig_sig = px.scatter(
     labels={"x": "dim 1", "y": "dim 2"},
 )
 fig_sig.update_traces(marker_size=4)
-col_r.plotly_chart(fig_sig, use_container_width=True)
+col_r.plotly_chart(fig_sig, width="content")

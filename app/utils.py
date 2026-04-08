@@ -40,6 +40,27 @@ LABEL_MAP = {"neutral": 0, "happy": 1}
 IDX_TO_LABEL = {0: "neutral", 1: "happy"}
 
 
+def get_torch_device():
+    """Return a stable torch device for this app.
+
+    The default is CPU for stability on macOS Streamlit sessions.
+    Set AFFE_COMPUTING_DEVICE=auto|cuda|mps|cpu to override.
+    """
+    import torch
+
+    choice = os.getenv("AFFE_COMPUTING_DEVICE", "cpu").strip().lower()
+    if choice == "cuda" and torch.cuda.is_available():
+        return torch.device("cuda")
+    if choice == "mps" and torch.backends.mps.is_available():
+        return torch.device("mps")
+    if choice == "auto":
+        if torch.backends.mps.is_available():
+            return torch.device("mps")
+        if torch.cuda.is_available():
+            return torch.device("cuda")
+    return torch.device("cpu")
+
+
 def get_mlflow_tracking_uri():
     """Return a unified MLflow tracking URI for Streamlit pages and MLflow UI."""
     env_uri = os.getenv("MLFLOW_TRACKING_URI", "").strip()
@@ -233,7 +254,7 @@ def extract_embeddings(df, processor, model, model_type, device=None, batch_size
     import torch
     import torch.nn.functional as F
     if device is None:
-        device = torch.device("mps" if torch.backends.mps.is_available() else "cuda" if torch.cuda.is_available() else "cpu")
+        device = get_torch_device()
     model = model.to(device)
     all_embs, all_labels = [], []
 
@@ -297,7 +318,7 @@ def get_or_compute_embeddings(train_df, val_df, test_df):
         else:
             import torch
             proc, model = loader_fn()
-            device = torch.device("mps" if torch.backends.mps.is_available() else "cuda" if torch.cuda.is_available() else "cpu")
+            device = get_torch_device()
             X_train, y_train = extract_embeddings(train_df, proc, model, model_type, device)
             X_val,   _       = extract_embeddings(val_df,   proc, model, model_type, device)
             X_test,  y_test  = extract_embeddings(test_df,  proc, model, model_type, device)

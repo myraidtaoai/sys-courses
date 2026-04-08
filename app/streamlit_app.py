@@ -69,7 +69,7 @@ fig_combined = px.bar(
     text_auto=True,
 )
 fig_combined.update_layout(showlegend=False, height=300)
-col_a.plotly_chart(fig_combined, use_container_width=True)
+col_a.plotly_chart(fig_combined, width="content")
 
 # Per-source class bar
 src_counts = combined_df.groupby(["source", "label"]).size().reset_index(name="Count")
@@ -81,7 +81,7 @@ fig_src = px.bar(
     labels={"source": "Dataset", "label": "Emotion"},
 )
 fig_src.update_layout(height=300)
-col_b.plotly_chart(fig_src, use_container_width=True)
+col_b.plotly_chart(fig_src, width="content")
 
 # ── Pipeline overview ─────────────────────────────────────────────────────────
 st.divider()

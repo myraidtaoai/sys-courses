@@ -11,8 +11,6 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 import plotly.express as px
-import torch
-import torch.nn.functional as F
 from PIL import Image
 from sklearn.base import clone
 from sklearn.manifold import TSNE
@@ -24,7 +22,38 @@ from app.utils import (
     _to_embedding_tensor,
     EMBEDDING_NAMES, CLASSIFIER_NAMES, EMB_KEY_MAP,
     IDX_TO_LABEL, SEED,
+    CLIP_CACHE, SIG_CACHE,
 )
+
+
+def get_torch_device():
+    """Use shared device helper when available; otherwise fall back to CPU-safe defaults."""
+    try:
+        from app.utils import get_torch_device as shared_get_torch_device
+        return shared_get_torch_device()
+    except Exception:
+        import torch
+        if torch.backends.mps.is_available():
+            return torch.device("mps")
+        if torch.cuda.is_available():
+            return torch.device("cuda")
+        return torch.device("cpu")
+
+@st.cache_resource(show_spinner="Moving model to device…")
+def load_clip_on_device():
+    import torch
+    proc, model = load_clip()
+    device = get_torch_device()
+    return proc, model.to(device), device
+
+
+@st.cache_resource(show_spinner="Moving model to device…")
+def load_siglip_on_device():
+    import torch
+    proc, model = load_siglip()
+    device = get_torch_device()
+    return proc, model.to(device), device
+
 
 st.set_page_config(page_title="Model Inference", page_icon="🔮", layout="wide")
 st.title("🔮 Model Inference")
@@ -52,7 +81,12 @@ val_df   = st.session_state["val_df"]
 test_df  = st.session_state["test_df"]
 
 if "emb_data" not in st.session_state:
-    if st.button("Load / Compute Background Embeddings"):
+    if CLIP_CACHE.exists() and SIG_CACHE.exists() and CLIP_CACHE.stat().st_size > 0 and SIG_CACHE.stat().st_size > 0:
+        with st.spinner("Found cached embeddings. Loading…"):
+            emb_data = get_or_compute_embeddings(train_df, val_df, test_df)
+            st.session_state["emb_data"] = emb_data
+        st.success("Cached embeddings loaded.")
+    elif st.button("Load / Compute Background Embeddings"):
         with st.spinner("Loading embeddings…"):
             emb_data = get_or_compute_embeddings(train_df, val_df, test_df)
             st.session_state["emb_data"] = emb_data
@@ -61,6 +95,11 @@ if "emb_data" not in st.session_state:
         st.info("Load background embeddings first to enable the 2D projection view.")
 
 emb_data = st.session_state.get("emb_data")
+
+if emb_data is not None and "clip_preloaded" not in st.session_state:
+    with st.spinner("Preloading CLIP embedding model…"):
+        load_clip_on_device()
+    st.session_state["clip_preloaded"] = True
 
 # ── Section 1: Upload & settings ─────────────────────────────────────────────
 st.header("1. Upload Image")
@@ -73,7 +112,7 @@ with col_up:
     )
     if uploaded_file:
         img = Image.open(uploaded_file).convert("RGB")
-        st.image(img, caption="Uploaded image", use_container_width=True)
+        st.image(img, caption="Uploaded image", width="content")
 
 with col_cfg:
     emb_choice = st.radio(
@@ -98,13 +137,13 @@ st.header("2. Prediction")
 if run_button and uploaded_file is not None:
     # ── Extract embedding ─────────────────────────────────────────────────────
     with st.spinner(f"Extracting {emb_name} embedding…"):
-        if emb_name == "CLIP":
-            proc, model = load_clip()
-        else:
-            proc, model = load_siglip()
+        import torch
+        import torch.nn.functional as F
 
-        device = torch.device("mps" if torch.backends.mps.is_available() else "cuda" if torch.cuda.is_available() else "cpu")
-        model  = model.to(device)
+        if emb_name == "CLIP":
+            proc, model, device = load_clip_on_device()
+        else:
+            proc, model, device = load_siglip_on_device()
 
         with torch.no_grad():
             inputs = proc(images=img, return_tensors="pt").to(device)
@@ -244,5 +283,5 @@ else:
         marker=dict(size=16, color="red", symbol="star", line=dict(color="black", width=1)),
         name=f"Uploaded ({infer_lbl})",
     )
-    st.plotly_chart(fig_proj, use_container_width=True)
+    st.plotly_chart(fig_proj, width="content")
     st.caption("Red star = uploaded image. Blue = neutral, orange = happy (background dataset).")

@@ -6,6 +6,7 @@ import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
+import json
 import numpy as np
 import pandas as pd
 import streamlit as st
@@ -18,8 +19,10 @@ from sklearn.metrics import (
 
 from app.utils import (
     load_combined_df, get_or_compute_embeddings, load_saved_classifiers,
-    EMBEDDING_NAMES, CLASSIFIER_NAMES, EMB_KEY_MAP, SEED,
+    EMBEDDING_NAMES, CLASSIFIER_NAMES, EMB_KEY_MAP, SEED, MODEL_STORE_DIR,
 )
+
+EVAL_RESULTS_CACHE = MODEL_STORE_DIR / "eval_results_cache.json"
 
 st.set_page_config(page_title="Model Evaluation", page_icon="📊", layout="wide")
 st.title("📊 Model Evaluation")
@@ -77,10 +80,24 @@ if not trained_clfs:
     st.warning("Saved classifiers were found, but none matched known embedding keys.")
     st.stop()
 
-results = {}
+# ── Load or compute evaluation results ───────────────────────────────────────
+_eval_cached = "eval_results" in st.session_state
 
-# Rebuild results if missing
-if not results:
+if not _eval_cached and EVAL_RESULTS_CACHE.exists():
+    with open(EVAL_RESULTS_CACHE) as _f:
+        st.session_state["eval_results"] = json.load(_f)
+    _eval_cached = True
+
+_col_eval, _col_reeval = st.columns([3, 1])
+_force_eval = _col_reeval.button("Refresh Results", disabled=not _eval_cached)
+
+if _force_eval:
+    EVAL_RESULTS_CACHE.unlink(missing_ok=True)
+    st.session_state.pop("eval_results", None)
+    _eval_cached = False
+
+if not _eval_cached:
+    results = {}
     for key, (clf, X_te, y_te) in trained_clfs.items():
         y_pred = clf.predict(X_te)
         results[key] = {
@@ -89,6 +106,12 @@ if not results:
             "precision": round(precision_score(y_te, y_pred), 3),
             "recall":    round(recall_score(y_te, y_pred), 3),
         }
+    st.session_state["eval_results"] = results
+    with open(EVAL_RESULTS_CACHE, "w") as _f:
+        json.dump(results, _f)
+else:
+    results = st.session_state["eval_results"]
+    _col_eval.success("Cached evaluation results loaded.")
 
 best_key = max(results, key=lambda k: results[k]["f1"])
 
@@ -104,7 +127,7 @@ def highlight_best(row):
 
 st.dataframe(
     results_df.style.apply(highlight_best, axis=1),
-    use_container_width=True,
+    width="content",
     hide_index=True,
 )
 st.success(f"Best combination: **{best_key}** — Test F1 = {results[best_key]['f1']:.3f}")
@@ -132,7 +155,7 @@ fig_heat = px.imshow(
     labels={"x": "Embedding", "y": "Classifier", "color": "F1"},
 )
 fig_heat.update_layout(height=320)
-st.plotly_chart(fig_heat, use_container_width=True)
+st.plotly_chart(fig_heat, width="content")
 
 # ── Section 3: Multi-metric bar chart ────────────────────────────────────────
 st.header("3. All Metrics Comparison")
@@ -146,7 +169,7 @@ fig_bar = px.bar(
     range_y=[0.5, 1.0],
 )
 fig_bar.update_layout(height=400, xaxis_tickangle=-20)
-st.plotly_chart(fig_bar, use_container_width=True)
+st.plotly_chart(fig_bar, width="content")
 
 # ── Section 4: Confusion matrix ───────────────────────────────────────────────
 st.header("4. Confusion Matrix")
@@ -167,7 +190,7 @@ fig_cm = ff.create_annotated_heatmap(
     showscale=True,
 )
 fig_cm.update_layout(title=f"Confusion Matrix — {combo_choice}", height=350)
-st.plotly_chart(fig_cm, use_container_width=True)
+st.plotly_chart(fig_cm, width="content")
 
 # ── Section 5: Classification report ─────────────────────────────────────────
 st.header("5. Detailed Classification Report")
@@ -184,4 +207,4 @@ report_dict = classification_report(y_te2, y_pred2,
                                      target_names=["neutral", "happy"],
                                      output_dict=True)
 report_df = pd.DataFrame(report_dict).T.round(3)
-st.dataframe(report_df, use_container_width=True)
+st.dataframe(report_df, width="content")

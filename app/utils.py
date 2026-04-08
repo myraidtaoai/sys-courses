@@ -7,12 +7,13 @@ classification_extra_data.ipynb notebook exactly.
 
 import os
 import re
+import json
 import numpy as np
 import pandas as pd
 from pathlib import Path
 from PIL import Image
+import joblib
 
-import torch
 import streamlit as st
 
 # ── Paths (relative to repo root) ────────────────────────────────────────────
@@ -23,13 +24,92 @@ TRAINING_SET  = DATA_ROOT / "training_set"
 ANN_PATH      = TRAINING_SET / "annotations.csv"
 CACHE_DIR     = REPO_ROOT / "app" / ".cache"
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
+EMBEDDINGS_DIR = REPO_ROOT / "embeddings"
+EMBEDDINGS_DIR.mkdir(parents=True, exist_ok=True)
+MODEL_STORE_DIR = REPO_ROOT / "models" / "saved_classifiers"
+MODEL_STORE_DIR.mkdir(parents=True, exist_ok=True)
+MODEL_MANIFEST = MODEL_STORE_DIR / "manifest.json"
 
-CLIP_CACHE    = CACHE_DIR / "clip_embeddings.npz"
-SIG_CACHE     = CACHE_DIR / "siglip2_embeddings.npz"
+CLIP_CACHE    = EMBEDDINGS_DIR / "clip_embeddings.npz"
+SIG_CACHE     = EMBEDDINGS_DIR / "siglip2_embeddings.npz"
+LEGACY_CLIP_CACHE = CACHE_DIR / "clip_embeddings.npz"
+LEGACY_SIG_CACHE  = CACHE_DIR / "siglip2_embeddings.npz"
 
 SEED = 42
 LABEL_MAP = {"neutral": 0, "happy": 1}
 IDX_TO_LABEL = {0: "neutral", 1: "happy"}
+
+
+def get_mlflow_tracking_uri():
+    """Return a unified MLflow tracking URI for Streamlit pages and MLflow UI."""
+    env_uri = os.getenv("MLFLOW_TRACKING_URI", "").strip()
+    if env_uri:
+        return env_uri
+    return str(REPO_ROOT / "mlruns")
+
+
+def get_mlflow_ui_command():
+    """Return the recommended CLI command to launch MLflow UI for the active URI."""
+    uri = get_mlflow_tracking_uri()
+
+    # For local file stores, point MLflow UI to the same directory used by Streamlit logging.
+    if uri.startswith("file://"):
+        return f'mlflow ui --backend-store-uri "{uri[7:]}" --port 5000'
+    if "://" not in uri:
+        return f'mlflow ui --backend-store-uri "{uri}" --port 5000'
+
+    # For remote tracking servers, MLflow UI should connect to that URI directly.
+    return f'MLFLOW_TRACKING_URI="{uri}" mlflow ui --port 5000'
+
+
+def _slugify(text):
+    return re.sub(r"[^a-zA-Z0-9]+", "_", str(text)).strip("_").lower()
+
+
+def _read_model_manifest():
+    if MODEL_MANIFEST.exists():
+        try:
+            with open(MODEL_MANIFEST, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            if isinstance(data, dict):
+                return data
+        except Exception:
+            pass
+    return {}
+
+
+def _write_model_manifest(manifest):
+    with open(MODEL_MANIFEST, "w", encoding="utf-8") as f:
+        json.dump(manifest, f, indent=2)
+
+
+def save_trained_classifier(combo_key, clf):
+    """Persist a fitted classifier and register it in the manifest."""
+    filename = f"{_slugify(combo_key)}.joblib"
+    model_path = MODEL_STORE_DIR / filename
+    joblib.dump(clf, model_path)
+
+    manifest = _read_model_manifest()
+    manifest[combo_key] = str(model_path)
+    _write_model_manifest(manifest)
+    return model_path
+
+
+def load_saved_classifiers():
+    """Load all saved classifiers from manifest (combo_key -> estimator)."""
+    loaded = {}
+    manifest = _read_model_manifest()
+
+    for combo_key, model_path in manifest.items():
+        p = Path(model_path)
+        if not p.exists():
+            continue
+        try:
+            loaded[combo_key] = joblib.load(p)
+        except Exception:
+            continue
+
+    return loaded
 
 
 # ── Data loading ─────────────────────────────────────────────────────────────
@@ -114,6 +194,29 @@ def load_siglip():
     return proc, model
 
 
+def _to_embedding_tensor(raw_out):
+    """Convert model outputs from different HF APIs into a single embedding tensor."""
+    import torch
+    if torch.is_tensor(raw_out):
+        return raw_out
+
+    if hasattr(raw_out, "pooler_output") and raw_out.pooler_output is not None:
+        return raw_out.pooler_output
+
+    if hasattr(raw_out, "image_embeds") and raw_out.image_embeds is not None:
+        return raw_out.image_embeds
+
+    if hasattr(raw_out, "last_hidden_state") and raw_out.last_hidden_state is not None:
+        return raw_out.last_hidden_state[:, 0, :]
+
+    if isinstance(raw_out, (tuple, list)):
+        for item in raw_out:
+            if torch.is_tensor(item):
+                return item
+
+    raise TypeError(f"Unsupported embedding output type: {type(raw_out).__name__}")
+
+
 def extract_embeddings(df, processor, model, model_type, device=None, batch_size=32):
     """
     Extract L2-normalized embeddings for all images in *df*.
@@ -127,8 +230,10 @@ def extract_embeddings(df, processor, model, model_type, device=None, batch_size
     embs   : np.ndarray (n, dim)
     labels : np.ndarray (n,)
     """
+    import torch
+    import torch.nn.functional as F
     if device is None:
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        device = torch.device("mps" if torch.backends.mps.is_available() else "cuda" if torch.cuda.is_available() else "cpu")
     model = model.to(device)
     all_embs, all_labels = [], []
 
@@ -145,11 +250,15 @@ def extract_embeddings(df, processor, model, model_type, device=None, batch_size
 
             inputs = processor(images=images, return_tensors="pt").to(device)
             if model_type == "clip":
-                embs = model.get_image_features(**inputs)
+                raw_out = model.get_image_features(**inputs)
             else:
-                embs = model.vision_model(**inputs).pooler_output
+                if hasattr(model, "get_image_features"):
+                    raw_out = model.get_image_features(**inputs)
+                else:
+                    raw_out = model.vision_model(**inputs)
 
-            embs = embs / embs.norm(dim=-1, keepdim=True)
+            embs = _to_embedding_tensor(raw_out)
+            embs = F.normalize(embs, p=2, dim=-1)
             all_embs.append(embs.cpu().float().numpy())
             all_labels.extend(batch["label_idx"].tolist())
 
@@ -163,12 +272,21 @@ def get_or_compute_embeddings(train_df, val_df, test_df):
     """
     result = {}
 
-    for name, cache_path, model_type, loader_fn in [
-        ("clip",    CLIP_CACHE, "clip",   load_clip),
-        ("siglip2", SIG_CACHE,  "siglip", load_siglip),
+    for name, primary_path, legacy_path, model_type, loader_fn in [
+        ("clip",    CLIP_CACHE, LEGACY_CLIP_CACHE, "clip",   load_clip),
+        ("siglip2", SIG_CACHE,  LEGACY_SIG_CACHE,  "siglip", load_siglip),
     ]:
-        if cache_path.exists():
-            data = np.load(cache_path)
+        if primary_path.exists():
+            data = np.load(primary_path)
+            result[name] = {
+                "X_train": data["X_train"],
+                "X_val":   data["X_val"],
+                "X_test":  data["X_test"],
+                "y_train": data["y_train"],
+                "y_test":  data["y_test"],
+            }
+        elif legacy_path.exists():
+            data = np.load(legacy_path)
             result[name] = {
                 "X_train": data["X_train"],
                 "X_val":   data["X_val"],
@@ -177,13 +295,14 @@ def get_or_compute_embeddings(train_df, val_df, test_df):
                 "y_test":  data["y_test"],
             }
         else:
+            import torch
             proc, model = loader_fn()
-            device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+            device = torch.device("mps" if torch.backends.mps.is_available() else "cuda" if torch.cuda.is_available() else "cpu")
             X_train, y_train = extract_embeddings(train_df, proc, model, model_type, device)
             X_val,   _       = extract_embeddings(val_df,   proc, model, model_type, device)
             X_test,  y_test  = extract_embeddings(test_df,  proc, model, model_type, device)
             np.savez_compressed(
-                cache_path,
+                primary_path,
                 X_train=X_train, X_val=X_val, X_test=X_test,
                 y_train=y_train, y_test=y_test,
             )

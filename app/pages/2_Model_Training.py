@@ -20,13 +20,14 @@ import mlflow.sklearn
 from app.utils import (
     load_combined_df, get_or_compute_embeddings,
     get_classifiers, COMBO_KEYS, EMBEDDING_NAMES, CLASSIFIER_NAMES,
-    EMB_KEY_MAP, SEED, REPO_ROOT,
+    EMB_KEY_MAP, SEED, get_mlflow_tracking_uri, get_mlflow_ui_command,
+    save_trained_classifier,
 )
 
 st.set_page_config(page_title="Model Training", page_icon="🏋️", layout="wide")
 st.title("🏋️ Model Training")
 
-MLFLOW_URI  = str(REPO_ROOT / "mlruns")
+MLFLOW_URI  = get_mlflow_tracking_uri()
 EXPERIMENT  = "affective_computing_binary_emotion"
 
 mlflow.set_tracking_uri(MLFLOW_URI)
@@ -114,6 +115,7 @@ if st.button("Train All 6 Combinations"):
     classifiers = get_classifiers()
     trained_clfs = {}
     results      = {}
+    saved_paths  = {}
     log_lines    = []
 
     progress_bar = st.progress(0)
@@ -161,7 +163,26 @@ if st.button("Train All 6 Combinations"):
                     "val_recall":     round(val_rec, 4),
                     "training_time_s": round(elapsed, 2),
                 })
-                mlflow.sklearn.log_model(clf, artifact_path="model")
+                mlflow.sklearn.log_model(
+                    clf,
+                    artifact_path="model",
+                    serialization_format="skops",
+                    pip_requirements=[
+                        f"scikit-learn=={__import__('sklearn').__version__}",
+                        f"xgboost=={__import__('xgboost').__version__}",
+                        f"skops=={__import__('skops').__version__}",
+                        f"numpy=={__import__('numpy').__version__}",
+                    ],
+                    skops_trusted_types=[
+                        "sklearn.linear_model._logistic.LogisticRegression",
+                        "sklearn.neural_network._multilayer_perceptron.MLPClassifier",
+                        "xgboost.sklearn.XGBClassifier",
+                        "xgboost.core.Booster",
+                        "sklearn.neural_network._stochastic_optimizers.AdamOptimizer",
+                        "numpy.dtype",
+                        "numpy.ndarray",
+                    ],
+                )
 
             y_pred_test = clf.predict(X_te)
             results[key] = {
@@ -171,6 +192,7 @@ if st.button("Train All 6 Combinations"):
                 "recall":    round(recall_score(y_te, y_pred_test), 3),
             }
             trained_clfs[key] = (clf, X_te, y_te)
+            saved_paths[key] = str(save_trained_classifier(key, clf))
 
             msg = (f"[{key}]  val_acc={val_acc:.3f}  val_f1={val_f1:.3f}  "
                    f"test_f1={results[key]['f1']:.3f}  ({elapsed:.1f}s)")
@@ -184,7 +206,8 @@ if st.button("Train All 6 Combinations"):
     status_text.text("Training complete.")
     st.session_state["trained_clfs"] = trained_clfs
     st.session_state["train_results"] = results
-    st.success("All 6 combinations trained and logged to MLflow.")
+    st.session_state["saved_model_paths"] = saved_paths
+    st.success("All 6 combinations trained, saved to disk, and logged to MLflow.")
 
 # ── Section 4: Cross-validation ───────────────────────────────────────────────
 st.header("4. 5-Fold Cross-Validation")
@@ -235,8 +258,9 @@ st.header("5. MLflow Run Explorer")
 
 st.markdown(
     f"Tracking URI: `{MLFLOW_URI}`  \n"
-    "To open the MLflow UI, run from the repo root:  \n"
-    "```bash\nmlflow ui --backend-store-uri mlruns\n```"
+    "To open the MLflow UI against the same tracking store, run:  \n"
+    f"```bash\n{get_mlflow_ui_command()}\n```\n"
+    "Then open: http://127.0.0.1:5000"
 )
 
 try:

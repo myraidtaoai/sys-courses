@@ -15,10 +15,9 @@ from sklearn.metrics import (
     confusion_matrix, classification_report,
     accuracy_score, f1_score, precision_score, recall_score,
 )
-from sklearn.base import clone
 
 from app.utils import (
-    load_combined_df, get_or_compute_embeddings, get_classifiers,
+    load_combined_df, get_or_compute_embeddings, load_saved_classifiers,
     EMBEDDING_NAMES, CLASSIFIER_NAMES, EMB_KEY_MAP, SEED,
 )
 
@@ -52,46 +51,33 @@ if "emb_data" not in st.session_state:
 
 emb_data = st.session_state["emb_data"]
 
-# ── Ensure trained classifiers ────────────────────────────────────────────────
-if "trained_clfs" not in st.session_state:
+# ── Load saved classifiers from disk ─────────────────────────────────────────
+saved_clfs = load_saved_classifiers()
+if not saved_clfs:
     st.warning(
-        "No trained classifiers found in session. "
-        "Go to **Model Training** page and train first, or use the quick-train button below."
+        "No saved classifiers found on disk. "
+        "Train models on the Model Training page first."
     )
-    if st.button("Quick-Train All 6 Combinations"):
-        classifiers = get_classifiers()
-        trained_clfs = {}
-        results = {}
-        pb = st.progress(0)
-        total = len(EMBEDDING_NAMES) * len(CLASSIFIER_NAMES)
-        step = 0
-        for emb_name in EMBEDDING_NAMES:
-            emb_key = EMB_KEY_MAP[emb_name]
-            X_tr = emb_data[emb_key]["X_train"]
-            X_te = emb_data[emb_key]["X_test"]
-            y_tr = emb_data[emb_key]["y_train"]
-            y_te = emb_data[emb_key]["y_test"]
-            for clf_name, clf_tmpl in classifiers.items():
-                key = f"{emb_name} + {clf_name}"
-                clf = clone(clf_tmpl)
-                clf.fit(X_tr, y_tr)
-                y_pred = clf.predict(X_te)
-                results[key] = {
-                    "accuracy":  round(accuracy_score(y_te, y_pred), 3),
-                    "f1":        round(f1_score(y_te, y_pred), 3),
-                    "precision": round(precision_score(y_te, y_pred), 3),
-                    "recall":    round(recall_score(y_te, y_pred), 3),
-                }
-                trained_clfs[key] = (clf, X_te, y_te)
-                step += 1
-                pb.progress(step / total)
-        st.session_state["trained_clfs"] = trained_clfs
-        st.session_state["train_results"] = results
-        st.rerun()
     st.stop()
 
-trained_clfs = st.session_state["trained_clfs"]
-results      = st.session_state.get("train_results", {})
+trained_clfs = {}
+for key, clf in saved_clfs.items():
+    if " + " not in key:
+        continue
+    emb_name = key.split(" + ")[0]
+    emb_key = EMB_KEY_MAP.get(emb_name)
+    if emb_key is None:
+        continue
+
+    X_te = emb_data[emb_key]["X_test"]
+    y_te = emb_data[emb_key]["y_test"]
+    trained_clfs[key] = (clf, X_te, y_te)
+
+if not trained_clfs:
+    st.warning("Saved classifiers were found, but none matched known embedding keys.")
+    st.stop()
+
+results = {}
 
 # Rebuild results if missing
 if not results:

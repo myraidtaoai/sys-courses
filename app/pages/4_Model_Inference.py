@@ -12,6 +12,7 @@ import pandas as pd
 import streamlit as st
 import plotly.express as px
 import torch
+import torch.nn.functional as F
 from PIL import Image
 from sklearn.base import clone
 from sklearn.manifold import TSNE
@@ -20,6 +21,7 @@ import umap as umap_lib
 from app.utils import (
     load_combined_df, get_or_compute_embeddings,
     load_clip, load_siglip, get_classifiers,
+    _to_embedding_tensor,
     EMBEDDING_NAMES, CLASSIFIER_NAMES, EMB_KEY_MAP,
     IDX_TO_LABEL, SEED,
 )
@@ -101,16 +103,21 @@ if run_button and uploaded_file is not None:
         else:
             proc, model = load_siglip()
 
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        device = torch.device("mps" if torch.backends.mps.is_available() else "cuda" if torch.cuda.is_available() else "cpu")
         model  = model.to(device)
 
         with torch.no_grad():
             inputs = proc(images=img, return_tensors="pt").to(device)
             if emb_name == "CLIP":
-                emb = model.get_image_features(**inputs)
+                raw_out = model.get_image_features(**inputs)
             else:
-                emb = model.vision_model(**inputs).pooler_output
-            emb = emb / emb.norm(dim=-1, keepdim=True)
+                if hasattr(model, "get_image_features"):
+                    raw_out = model.get_image_features(**inputs)
+                else:
+                    raw_out = model.vision_model(**inputs)
+
+            emb = _to_embedding_tensor(raw_out)
+            emb = F.normalize(emb, p=2, dim=-1)
             emb_np = emb.cpu().float().numpy()  # (1, dim)
 
     # ── Load or train the chosen classifier ───────────────────────────────────

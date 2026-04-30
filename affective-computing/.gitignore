@@ -1,0 +1,13 @@
+.DS_Store
+.vscode/settings.json
+*.pkl
+*.pth
+embeddings/clip_embeddings.npz
+embeddings/siglip2_embeddings.npz
+/data
+/.claude
+/.affecomp
+/mlruns
+/models
+/app/.cache
+*.pyc

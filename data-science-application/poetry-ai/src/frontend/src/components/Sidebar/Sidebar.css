@@ -1,0 +1,134 @@
+.sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 260px;
+  height: 100vh;
+  height: 100dvh;
+  background: linear-gradient(180deg, #f9f5ef 0%, #f2e8dd 100%);
+  border-right: 1px solid rgba(47, 34, 32, 0.08);
+  box-shadow: 20px 0 40px rgba(0, 0, 0, 0.06);
+  display: flex;
+  flex-direction: column;
+  z-index: 1000;
+  padding-top: 12px;
+  transition: transform 0.3s ease;
+}
+
+.sidebar__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px 12px;
+}
+
+.sidebar__title {
+  margin: 0;
+  font-size: 1.05rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #1f1409;
+}
+
+.sidebar__close-btn {
+  background: transparent;
+  border: none;
+  font-size: 1.6rem;
+  color: rgba(28, 17, 7, 0.6);
+  cursor: pointer;
+  display: none;
+}
+
+.sidebar__new-chat {
+  margin: 0 20px 14px;
+  border: 1px solid rgba(28, 17, 7, 0.1);
+  border-radius: 16px;
+  padding: 12px 14px;
+  background: white;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+  color: #2f2212;
+  cursor: pointer;
+  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.08);
+  transition: transform 0.2s ease;
+}
+
+.sidebar__new-chat:hover {
+  transform: translateY(-2px);
+}
+
+.sidebar__section {
+  flex: 1;
+  padding: 0 20px;
+  overflow-y: auto;
+}
+
+.sidebar__section-title {
+  font-size: 0.75rem;
+  letter-spacing: 0.3em;
+  color: rgba(31, 20, 9, 0.5);
+  margin-bottom: 10px;
+}
+
+.sidebar__list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sidebar__list li {
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(0, 0, 0, 0.04);
+  cursor: pointer;
+  color: #2f2212;
+  font-size: 0.92rem;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.sidebar__list li:hover {
+  transform: translateX(4px);
+  box-shadow: 0 12px 20px rgba(0, 0, 0, 0.06);
+}
+
+.sidebar__footer {
+  padding: 18px 20px;
+  font-size: 0.75rem;
+  color: rgba(28, 17, 7, 0.5);
+  border-top: 1px solid rgba(47, 34, 32, 0.08);
+}
+
+.sidebar__overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  z-index: 999;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+@media (max-width: 900px) {
+  .sidebar {
+    transform: translateX(-100%);
+  }
+
+  .sidebar.open {
+    transform: translateX(0);
+  }
+
+  .sidebar__close-btn {
+    display: block;
+  }
+
+  .sidebar__overlay.open {
+    display: block;
+    opacity: 1;
+  }
+}

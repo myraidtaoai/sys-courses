@@ -1,0 +1,115 @@
+:root {
+  --sand: #f4f1ea;
+  --paper: #fdfbf7;
+  --ink: #2b2219;
+  --accent: #f7b267;
+  --accent-dark: #2f2a20;
+  --border: #e4d6c6;
+  --shadow: rgba(24, 18, 9, 0.08);
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  min-height: 100%;
+  font-family: 'Inter', 'Instrument Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: radial-gradient(circle at top, #fff7ec 0%, #f1ece3 45%, #ece7de 100%);
+  color: var(--ink);
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.app-layout {
+  min-height: 100vh;
+  display: flex;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.85) 0%, rgba(248, 244, 237, 0.95) 60%, #f0ece5 100%);
+}
+
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  margin-left: 260px;
+  position: relative;
+}
+
+.main-content::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 30% -10%, rgba(247, 178, 103, 0.25), transparent 50%),
+              radial-gradient(circle at 80% 20%, rgba(111, 143, 175, 0.2), transparent 45%);
+  z-index: 0;
+  pointer-events: none;
+}
+
+.main-content > * {
+  position: relative;
+  z-index: 1;
+}
+
+.chat-area {
+  flex: 1;
+  padding: clamp(16px, 4vw, 48px);
+  display: flex;
+  align-items: stretch;
+}
+
+.chat-container {
+  flex: 1;
+  background: var(--paper);
+  border-radius: 28px;
+  border: 1px solid var(--border);
+  box-shadow: 0 30px 60px rgba(31, 20, 9, 0.08);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.chat-container--blank {
+  padding: clamp(12px, 2vw, 24px);
+}
+
+.chat-container--blank .example-cards {
+  background: transparent;
+  border-radius: 20px;
+  height: 100%;
+}
+
+@media (max-width: 1200px) {
+  .main-content {
+    margin-left: 240px;
+  }
+}
+
+@media (max-width: 900px) {
+  .main-content {
+    margin-left: 0;
+  }
+
+  .chat-area {
+    padding: clamp(12px, 5vw, 24px);
+  }
+
+  .chat-container {
+    border-radius: 20px;
+  }
+}
+
+@media (max-width: 600px) {
+  .chat-area {
+    padding: clamp(8px, 4vw, 16px);
+  }
+
+  .chat-container {
+    border-radius: 16px;
+  }
+}

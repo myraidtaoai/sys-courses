@@ -1,0 +1,121 @@
+.input-area {
+  padding: clamp(14px, 3vw, 24px);
+  border-top: 1px solid rgba(47, 42, 32, 0.08);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.92), #fffaf2 70%);
+  box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.04);
+}
+
+.input-area__form {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.input-area__form--interruption {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 14px;
+}
+
+.input-area__interruption-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(247, 178, 103, 0.18);
+  border: 1px solid rgba(247, 178, 103, 0.4);
+  padding: 12px 16px;
+  border-radius: 16px;
+  color: #7a4a1e;
+}
+
+.input-area__input,
+.input-area__textarea {
+  flex: 1;
+  min-width: 0;
+  border-radius: 20px;
+  border: 1px solid rgba(31, 20, 9, 0.12);
+  padding: 14px 18px;
+  font-size: 1rem;
+  font-family: inherit;
+  background: rgba(255, 255, 255, 0.9);
+  color: #1f150d;
+  transition: border 0.2s ease, box-shadow 0.2s ease;
+}
+
+.input-area__input:focus,
+.input-area__textarea:focus {
+  outline: none;
+  border-color: #f7b267;
+  box-shadow: 0 0 0 3px rgba(247, 178, 103, 0.25);
+}
+
+.input-area__input::placeholder,
+.input-area__textarea::placeholder {
+  color: rgba(47, 42, 32, 0.4);
+}
+
+.input-area__textarea {
+  width: 100%;
+  resize: vertical;
+  min-height: 140px;
+}
+
+.input-area__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.input-area__button {
+  border: none;
+  border-radius: 20px;
+  padding: 12px 18px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.input-area__button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.input-area__button--send {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  padding: 0;
+  background: #2f2a20;
+  color: #fffdf7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 10px 20px rgba(47, 42, 32, 0.25);
+}
+
+.input-area__button--send:hover:not(:disabled) {
+  transform: translateY(-2px) scale(1.03);
+}
+
+.input-area__button--submit {
+  background: #2f2a20;
+  color: #fff8ec;
+  box-shadow: 0 10px 20px rgba(47, 42, 32, 0.18);
+}
+
+.input-area__button--cancel {
+  background: rgba(47, 42, 32, 0.08);
+  color: #2f2a20;
+}
+
+@media (max-width: 640px) {
+  .input-area__form {
+    gap: 8px;
+  }
+
+  .input-area__button--send {
+    width: 44px;
+    height: 44px;
+  }
+}

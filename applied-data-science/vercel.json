@@ -10,7 +10,7 @@
       "routePrefix": "/api",
       "framework": "fastapi",
       "includeFiles": [
-        "database/bikes.db"
+        "database/**"
       ]
     }
   }

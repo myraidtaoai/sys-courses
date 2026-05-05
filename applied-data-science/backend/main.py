@@ -9,9 +9,9 @@ from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 
 try:
-    from db import DB_PATH, row, rows, scalar
+    from db import DB_CANDIDATES, DB_PATH, row, rows, scalar
 except ModuleNotFoundError:
-    from backend.db import DB_PATH, row, rows, scalar
+    from backend.db import DB_CANDIDATES, DB_PATH, row, rows, scalar
 
 
 app = FastAPI(title="Seoul Bike Analytics API")
@@ -131,6 +131,7 @@ def debug() -> dict:
         "db_path": str(DB_PATH),
         "db_exists": DB_PATH.exists(),
         "db_size": DB_PATH.stat().st_size if DB_PATH.exists() else 0,
+        "db_candidates": [{"path": str(path), "exists": path.exists()} for path in DB_CANDIDATES],
         "table_count": table_count,
         "daily_count": daily_count,
         "error": error,

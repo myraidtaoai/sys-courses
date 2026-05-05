@@ -19,7 +19,9 @@ DB_PATH = next((path for path in DB_CANDIDATES if path.exists()), DB_CANDIDATES[
 
 
 def connect() -> sqlite3.Connection:
-    conn = sqlite3.connect(DB_PATH)
+    # Use URI connection with mode=ro to prevent SQLite from attempting to 
+    # write lock/journal files in Vercel's read-only filesystem.
+    conn = sqlite3.connect(f"file:{DB_PATH.as_posix()}?mode=ro", uri=True, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     return conn
 

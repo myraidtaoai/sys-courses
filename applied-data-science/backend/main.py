@@ -751,3 +751,20 @@ def model_summary() -> dict:
         """
     )
     return {"metrics": metrics}
+
+
+for path, endpoint in [
+    ("/health", health),
+    ("/debug", debug),
+    ("/date-range", date_range),
+    ("/overview", overview),
+    ("/trends", trends),
+    ("/seasonality", seasonality),
+    ("/periodicity", periodicity),
+    ("/clusters", clusters),
+    ("/correlations", correlations),
+    ("/forecast/options", forecast_options),
+    ("/forecast", forecast),
+    ("/model-summary", model_summary),
+]:
+    app.add_api_route(path, endpoint, methods=["GET"], include_in_schema=False)

@@ -10,6 +10,7 @@
       "routePrefix": "/api",
       "framework": "fastapi",
       "includeFiles": [
+        "backend/database/**",
         "database/**"
       ]
     }

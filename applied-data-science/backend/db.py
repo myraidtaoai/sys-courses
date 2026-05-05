@@ -7,11 +7,12 @@ from typing import Any
 
 MODULE_DIR = Path(__file__).resolve().parent
 DB_CANDIDATES = [
-    Path.cwd() / "database" / "bikes.db",
     MODULE_DIR / "database" / "bikes.db",
+    Path.cwd() / "database" / "bikes.db",
     MODULE_DIR.parent / "database" / "bikes.db",
-    Path("/var/task/database/bikes.db"),
     Path("/var/task/backend/database/bikes.db"),
+    Path("/var/task/database/bikes.db"),
+    Path("/var/task/bikes.db"),
     Path("/var/database/bikes.db"),
 ]
 DB_PATH = next((path for path in DB_CANDIDATES if path.exists()), DB_CANDIDATES[0])

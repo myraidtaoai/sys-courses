@@ -22,6 +22,15 @@ app.add_middleware(
 )
 
 
+@app.middleware("http")
+async def strip_deployment_prefix(request, call_next):
+    path = request.scope.get("path", "")
+    if path.startswith("/_/backend/"):
+        request.scope["path"] = path.removeprefix("/_/backend")
+        request.scope["raw_path"] = request.scope["path"].encode()
+    return await call_next(request)
+
+
 def season_for_month(month: int) -> str:
     if month in (12, 1, 2):
         return "Winter"

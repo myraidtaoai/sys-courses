@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sqlite3
+from contextlib import closing
 from pathlib import Path
 from typing import Any
 
@@ -27,17 +28,17 @@ def connect() -> sqlite3.Connection:
 
 
 def rows(query: str, params: tuple[Any, ...] = ()) -> list[dict[str, Any]]:
-    with connect() as conn:
+    with closing(connect()) as conn:
         return [dict(row) for row in conn.execute(query, params).fetchall()]
 
 
 def row(query: str, params: tuple[Any, ...] = ()) -> dict[str, Any] | None:
-    with connect() as conn:
+    with closing(connect()) as conn:
         result = conn.execute(query, params).fetchone()
     return dict(result) if result else None
 
 
 def scalar(query: str, params: tuple[Any, ...] = ()) -> Any:
-    with connect() as conn:
+    with closing(connect()) as conn:
         result = conn.execute(query, params).fetchone()
     return result[0] if result else None

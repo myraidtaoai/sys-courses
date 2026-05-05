@@ -31,6 +31,15 @@ async def strip_deployment_prefix(request, call_next):
     if path.startswith("/_/backend/"):
         request.scope["path"] = path.removeprefix("/_/backend")
         request.scope["raw_path"] = request.scope["path"].encode()
+    elif path.startswith("/api/index.py/api/"):
+        request.scope["path"] = path.removeprefix("/api/index.py")
+        request.scope["raw_path"] = request.scope["path"].encode()
+    elif path.startswith("/api/index.py/"):
+        request.scope["path"] = path.replace("/api/index.py/", "/api/", 1)
+        request.scope["raw_path"] = request.scope["path"].encode()
+    elif path == "/api/index.py":
+        request.scope["path"] = "/api/health"
+        request.scope["raw_path"] = request.scope["path"].encode()
     elif path in {
         "/health",
         "/date-range",

@@ -68,7 +68,10 @@ function yearsIn(data, key = 'year') {
 
 async function fetchJson(path) {
   const response = await fetch(`${API_BASE}${path}`);
-  if (!response.ok) throw new Error(`Request failed: ${path}`);
+  if (!response.ok) {
+    const body = await response.text().catch(() => '');
+    throw new Error(`Request failed (${response.status}): ${path}${body ? ` - ${body.slice(0, 180)}` : ''}`);
+  }
   return response.json();
 }
 

@@ -9,9 +9,9 @@ from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 
 try:
-    from db import row, rows
+    from db import DB_PATH, row, rows, scalar
 except ModuleNotFoundError:
-    from backend.db import row, rows
+    from backend.db import DB_PATH, row, rows, scalar
 
 
 app = FastAPI(title="Seoul Bike Analytics API")
@@ -40,6 +40,7 @@ async def strip_deployment_prefix(request, call_next):
         "/forecast/options",
         "/forecast",
         "/model-summary",
+        "/debug",
     }:
         request.scope["path"] = f"/api{path}"
         request.scope["raw_path"] = request.scope["path"].encode()
@@ -113,6 +114,27 @@ def slope(items: list[dict], x_key: str, y_key: str) -> float | None:
 @app.get("/api/health")
 def health() -> dict:
     return {"status": "ok"}
+
+
+@app.get("/api/debug")
+def debug() -> dict:
+    table_count = None
+    daily_count = None
+    error = None
+    try:
+        table_count = scalar("SELECT COUNT(*) FROM sqlite_master WHERE type = 'table'")
+        daily_count = scalar("SELECT COUNT(*) FROM fact_bike_rentals_daily")
+    except Exception as exc:
+        error = str(exc)
+    return {
+        "status": "ok" if error is None else "error",
+        "db_path": str(DB_PATH),
+        "db_exists": DB_PATH.exists(),
+        "db_size": DB_PATH.stat().st_size if DB_PATH.exists() else 0,
+        "table_count": table_count,
+        "daily_count": daily_count,
+        "error": error,
+    }
 
 
 @app.get("/api/date-range")

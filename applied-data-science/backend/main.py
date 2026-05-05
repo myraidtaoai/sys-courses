@@ -31,6 +31,21 @@ async def strip_deployment_prefix(request, call_next):
     if path.startswith("/_/backend/"):
         request.scope["path"] = path.removeprefix("/_/backend")
         request.scope["raw_path"] = request.scope["path"].encode()
+    elif path in {
+        "/health",
+        "/date-range",
+        "/overview",
+        "/trends",
+        "/seasonality",
+        "/periodicity",
+        "/clusters",
+        "/correlations",
+        "/forecast/options",
+        "/forecast",
+        "/model-summary",
+    }:
+        request.scope["path"] = f"/api{path}"
+        request.scope["raw_path"] = request.scope["path"].encode()
     return await call_next(request)
 
 

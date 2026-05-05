@@ -1,3 +1,11 @@
 .DS_Store
 Group 11 Member Contributions.pdf
 /dsenv
+/images
+/models
+
+# Local app/runtime artifacts
+__pycache__/
+backend/.venv/
+frontend/node_modules/
+frontend/dist/

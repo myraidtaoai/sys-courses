@@ -8,7 +8,10 @@ from typing import Any
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 
-from db import row, rows
+try:
+    from db import row, rows
+except ModuleNotFoundError:
+    from backend.db import row, rows
 
 
 app = FastAPI(title="Seoul Bike Analytics API")

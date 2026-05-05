@@ -6,8 +6,12 @@
       "framework": "vite"
     },
     "backend": {
-      "entrypoint": "backend",
-      "routePrefix": "/_/backend"
+      "entrypoint": "backend/main.py",
+      "routePrefix": "/api",
+      "framework": "fastapi",
+      "includeFiles": [
+        "database/bikes.db"
+      ]
     }
   }
 }
